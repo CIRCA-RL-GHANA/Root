@@ -30,7 +30,7 @@ Concise commands, patterns, and lookups for day-to-day development and operation
 cd orionstack-backend--main
 docker compose up -d           # Start postgres + redis
 npm run migration:run           # Apply migrations
-npm run start:dev               # Hot-reload dev server ? http://localhost:3000
+npm run start:dev               # Hot-reload dev server → http://localhost:3000
 ```
 
 ### Flutter App
@@ -133,7 +133,7 @@ npm run migration:generate -- src/database/migrations/<Name>  # Generate from en
 |---|---|
 | `npm run start:dev` | Development with hot reload |
 | `npm run start:debug` | Debug mode (port 9229) |
-| `npm run build` | Compile TypeScript ? dist/ |
+| `npm run build` | Compile TypeScript → dist/ |
 | `npm run start:prod` | Run compiled production build |
 | `npm run lint` | ESLint with auto-fix |
 | `npm test` | Unit tests |
@@ -166,8 +166,8 @@ dart run build_runner build --delete-conflicting-outputs   # Code generation
 
 ### Auth
 ```
-POST  /auth/login              Phone + password ? tokens
-POST  /auth/refresh            Refresh token ? new tokens
+POST  /auth/login              Phone + password → tokens
+POST  /auth/refresh            Refresh token → new tokens
 GET   /auth/me                 Current user
 POST  /auth/logout             Invalidate session
 ```
@@ -247,14 +247,14 @@ GET   /health/ready                    Readiness probe
 
 ```
 1. POST /auth/login  { identifier, password }
-   ? { user, tokens: { accessToken, refreshToken } }
+   → { user, tokens: { accessToken, refreshToken } }
 
 2. Every request: Authorization: Bearer <accessToken>
 
 3. On 401: POST /auth/refresh  { refreshToken }
-   ? { tokens: { accessToken, refreshToken } }
+   → { tokens: { accessToken, refreshToken } }
 
-4. POST /auth/logout ? 204
+4. POST /auth/logout → 204
 
 JWT payload: { sub (userId), phoneNumber, socialUsername, wireId, iat, exp }
 Access token: 7 days | Refresh token: 30 days
@@ -267,16 +267,16 @@ Access token: 7 days | Refresh token: 30 days
 Required before deployment:
 
 ```
-? NODE_ENV=production
-? DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME
-? DB_SYNCHRONIZE=false
-? JWT_SECRET (=48 base64 chars, openssl rand -base64 48)
-? JWT_REFRESH_SECRET (different value)
-? PIN_ENCRYPTION_KEY (32 hex chars, openssl rand -hex 32)
-? REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
-? SENDGRID_API_KEY, EMAIL_FROM
-? TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
-? CORS_ORIGIN (production frontend domain)
+✅ NODE_ENV=production
+✅ DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME
+✅ DB_SYNCHRONIZE=false
+✅ JWT_SECRET (≥48 base64 chars, openssl rand -base64 48)
+✅ JWT_REFRESH_SECRET (different value)
+✅ PIN_ENCRYPTION_KEY (32 hex chars, openssl rand -hex 32)
+✅ REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+✅ SENDGRID_API_KEY, EMAIL_FROM
+✅ TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+✅ CORS_ORIGIN (production frontend domain)
 ```
 
 Generate secrets:
@@ -367,7 +367,7 @@ const socket = io('wss://api.promptgenie.app/chat', {
 });
 ```
 
-### Client ? Server
+### Client → Server
 
 | Event | Payload |
 |---|---|
@@ -375,7 +375,7 @@ const socket = io('wss://api.promptgenie.app/chat', {
 | `chat:typing` | `{ recipientId, isTyping }` |
 | `chat:read` | `{ messageId }` |
 
-### Server ? Client
+### Server → Client
 
 | Event | Payload |
 |---|---|
@@ -416,7 +416,7 @@ const socket = io('wss://api.promptgenie.app/chat', {
 ## Deployment Checklist
 
 ```
-[ ] DNS A record ? server IP
+[ ] DNS A record → server IP
 [ ] Ports 80 + 443 open in firewall
 [ ] .env populated and validated (./scripts/validate-env.sh --strict)
 [ ] SSL provisioned (make ssl DOMAIN=... EMAIL=...)
@@ -425,7 +425,7 @@ const socket = io('wss://api.promptgenie.app/chat', {
 [ ] make deploy
 [ ] Migrations applied (make migrate)
 [ ] Health check passing (curl https://api.promptgenie.app/api/v1/health)
-[ ] Smoke test: expected 401 ? curl https://api.promptgenie.app/api/v1/auth/me
+[ ] Smoke test: expected 401 → curl https://api.promptgenie.app/api/v1/auth/me
 ```
 
 ---
@@ -434,8 +434,8 @@ const socket = io('wss://api.promptgenie.app/chat', {
 
 | Threshold | Value | Action |
 |---|---|---|
-| Block | = 0.85 | Transaction auto-declined |
-| Review | = 0.55 | Flagged for manual review |
+| Block | ≥ 0.85 | Transaction auto-declined |
+| Review | ≥ 0.55 | Flagged for manual review |
 | Clean | < 0.55 | Allowed |
 
 High-risk payment methods: `virtual_card`, `prepaid`, `gift_card`
@@ -445,13 +445,13 @@ High-risk payment methods: `virtual_card`, `prepaid`, `gift_card`
 ## Dynamic Pricing Formula
 
 ```
-baseFare = 5.00 + (distanceKm � 2.50) + (estimatedMinutes � 0.35)
-platformFee = baseFare � 0.08
-totalFare = (baseFare + platformFee) � surgeMultiplier
+baseFare = 5.00 + (distanceKm × 2.50) + (estimatedMinutes × 0.35)
+platformFee = baseFare × 0.08
+totalFare = (baseFare + platformFee) × surgeMultiplier
 
-surgeMultiplier range: 1.0 � 3.5�
-Peak hours (UTC): 07:00�09:00, 17:00�20:00
-Late night (UTC): 23:00�04:00 ? +20% surge floor
+surgeMultiplier range: 1.0 – 3.5×
+Peak hours (UTC): 07:00–09:00, 17:00–20:00
+Late night (UTC): 23:00–04:00 → +20% surge floor
 ```
 
 ---

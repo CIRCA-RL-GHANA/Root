@@ -31,7 +31,7 @@ thedep/
 │   │   ├── app.module.ts       # Root module (27 feature modules)
 │   │   ├── main.ts             # Bootstrap, Helmet, CORS, Swagger
 │   │   ├── config/             # Env validation (Joi), TypeORM factory
-│   │   ├── database/           # Data source, migrations (13), seeds
+│   │   ├── database/           # Data source, migrations (25), seeds
 │   │   ├── gateway/            # WebSocket chat gateway (Socket.io)
 │   │   ├── common/             # Filters, interceptors, guards, DTOs
 │   │   └── modules/            # 27 feature modules (see below)

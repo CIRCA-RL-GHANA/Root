@@ -40,7 +40,7 @@ orionstack-backend--main/
 │   │
 │   ├── database/
 │   │   ├── data-source.ts     # TypeORM DataSource (used by CLI migration commands)
-│   │   ├── migrations/        # 13 ordered TypeORM migrations
+│   │   ├── migrations/        # 25 ordered TypeORM migrations
 │   │   └── seeds/             # Optional seed data
 │   │
 │   ├── gateway/
