@@ -153,7 +153,7 @@ make deploy
 
 See [API.md](API.md) for the complete REST API reference.
 
-- **Base URL:** `https://api.example.com/api/v1`
+- **Base URL:** `https://api.promptgenie.app/api/v1`
 - **Auth:** Bearer JWT (Authorization header)
 - **Docs (dev):** `http://localhost:3000/api/docs`
 

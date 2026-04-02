@@ -162,13 +162,13 @@ The Docker images are Kubernetes-ready today. Migrate `docker-compose.prod.yml` 
 ./scripts/validate-env.sh --strict
 
 # 2. Provision SSL
-make ssl DOMAIN=api.example.com EMAIL=admin@example.com
+make ssl DOMAIN=api.promptgenie.app EMAIL=admin@promptgenie.com
 
 # 3. Deploy
 make deploy
 
 # 4. Verify
-curl https://api.example.com/api/v1/health
+curl https://api.promptgenie.app/api/v1/health
 ```
 
 Full details in [DEPLOYMENT.md](DEPLOYMENT.md).

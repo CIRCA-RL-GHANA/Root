@@ -139,9 +139,9 @@ Edit `lib/core/constants/env_config.dart`:
 class EnvConfig {
   static const String baseUrl = 'http://10.0.2.2:3000/api/v1'; // Android emulator
   // static const String baseUrl = 'http://localhost:3000/api/v1'; // iOS / web
-  // static const String baseUrl = 'https://api.example.com/api/v1'; // production
+  // static const String baseUrl = 'https://api.promptgenie.app/api/v1'; // production
   
-  static const String wsUrl = 'wss://api.example.com/socket.io/chat';
+  static const String wsUrl = 'wss://api.promptgenie.app/socket.io/chat';
 }
 ```
 
@@ -702,8 +702,8 @@ location /pwa/ {
 Update `lib/core/constants/env_config.dart` with production URLs before building release binaries:
 
 ```dart
-static const String baseUrl = 'https://api.example.com/api/v1';
-static const String wsUrl = 'wss://api.example.com/socket.io/chat';
+static const String baseUrl = 'https://api.promptgenie.app/api/v1';
+static const String wsUrl = 'wss://api.promptgenie.app/socket.io/chat';
 ```
 
 ---

@@ -151,10 +151,10 @@ This script checks that all required variables are present and not left as place
 SSL must be provisioned before starting the full stack (Nginx requires valid certs).
 
 ```bash
-make ssl DOMAIN=api.example.com EMAIL=admin@example.com
+make ssl DOMAIN=api.promptgenie.app EMAIL=admin@promptgenie.com
 ```
 
-This runs Certbot in standalone mode, issues a Let's Encrypt certificate, and places it at `/etc/letsencrypt/live/api.example.com/`.
+This runs Certbot in standalone mode, issues a Let's Encrypt certificate, and places it at `/etc/letsencrypt/live/api.promptgenie.app/`.
 
 ### Auto-Renewal
 
@@ -236,7 +236,7 @@ docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml exec app npm run migration:run
 
 # Verify health
-curl https://api.example.com/api/v1/health
+curl https://api.promptgenie.app/api/v1/health
 ```
 
 ---
@@ -247,13 +247,13 @@ curl https://api.example.com/api/v1/health
 
 ```bash
 # Overall health (database, memory, disk)
-curl https://api.example.com/api/v1/health
+curl https://api.promptgenie.app/api/v1/health
 
 # Liveness probe (quick — is the process alive?)
-curl https://api.example.com/api/v1/health/live
+curl https://api.promptgenie.app/api/v1/health/live
 
 # Readiness probe (is the app ready to serve traffic?)
-curl https://api.example.com/api/v1/health/ready
+curl https://api.promptgenie.app/api/v1/health/ready
 ```
 
 All return `HTTP 200` with JSON body when healthy.
@@ -270,10 +270,10 @@ docker compose -f docker-compose.prod.yml ps
 
 ```bash
 # Should return 401 (auth required) — confirms routing is working
-curl -i https://api.example.com/api/v1/auth/me
+curl -i https://api.promptgenie.app/api/v1/auth/me
 
 # Should return 200 with app info
-curl https://api.example.com/api/v1/health
+curl https://api.promptgenie.app/api/v1/health
 ```
 
 ---
@@ -294,7 +294,7 @@ docker compose -f docker-compose.prod.yml up -d --no-deps app
 docker compose -f docker-compose.prod.yml exec app npm run migration:run
 
 # 5. Verify
-curl https://api.example.com/api/v1/health/live
+curl https://api.promptgenie.app/api/v1/health/live
 ```
 
 Nginx continues serving requests during app container restart. Downtime is limited to the container startup time (~5–10 seconds).
@@ -492,7 +492,7 @@ Ensure `DB_HOST=postgres` (Docker service name, not `localhost`) in production `
 ### SSL certificate not found
 
 ```bash
-ls /etc/letsencrypt/live/api.example.com/
+ls /etc/letsencrypt/live/api.promptgenie.app/
 ```
 
 Rerun `make ssl` if certificates are missing or expired.

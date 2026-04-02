@@ -113,5 +113,20 @@ export const API_ROUTES = {
     AI_SPENDING:  '/planner/ai/spending-pattern',
     AI_FORECAST:  '/planner/ai/forecast',
   },
+  WALLETS: {
+    ME:      '/wallets/me',
+    BALANCE: '/wallets/balance',
+  },
+  PAYMENTS: {
+    BASE:    '/payments',
+    REFUND:  '/payments/:id/refund',
+    HISTORY: '/payments/history',
+  },
+  GO: {
+    WALLET:            '/go/wallet',
+    TRANSACTIONS:      '/go/transactions',
+    TRANSACTION_BY_ID: '/go/transactions/:id',
+    TOPUP:             '/go/topup',
+  },
   HEALTH: { CHECK: '/health', READY: '/health/ready', LIVE: '/health/live' },
 } as const;
