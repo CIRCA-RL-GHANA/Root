@@ -95,7 +95,7 @@ PIN_ENCRYPTION_KEY=<openssl rand -hex 32>
 
 | Variable | Required | Description |
 |---|---|---|
-| `REDIS_HOST` | ✅ | Redis hostname. Use `redis` in Docker, `localhost` outside |
+| `REDIS_HOST` | ❌ | Redis hostname. Use `redis` in Docker, `localhost` outside (default `localhost`) |
 | `REDIS_PORT` | ❌ | Redis port (default `6379`) |
 | `REDIS_PASSWORD` | ❌ | Redis AUTH password (empty string if disabled) |
 | `REDIS_DB` | ❌ | Redis database index (default `0`) |
@@ -119,7 +119,7 @@ REDIS_DB=0
 
 ```env
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-EMAIL_FROM=noreply@example.com
+EMAIL_FROM=noreply@promptgenie.com
 EMAIL_FROM_NAME=PROMPT Genie
 ```
 
@@ -177,7 +177,7 @@ THROTTLE_LIMIT=100
 | `CORS_CREDENTIALS` | ❌ | Allow credentials (`true` / `false`, default `true`) |
 
 ```env
-CORS_ORIGIN=https://app.example.com,https://admin.example.com
+CORS_ORIGIN=https://promptgenie.app
 CORS_CREDENTIALS=true
 ```
 
@@ -187,7 +187,7 @@ CORS_CREDENTIALS=true
 
 | Variable | Required | Description |
 |---|---|---|
-| `LOG_LEVEL` | ❌ | Minimum log level: `error` \| `warn` \| `log` \| `debug` (default `info`) |
+| `LOG_LEVEL` | ❌ | Minimum log level: `error` \| `warn` \| `info` \| `debug` \| `verbose` (default `info`) |
 | `LOG_FILE_PATH` | ❌ | Directory for log files (default `./logs`) |
 
 ```env
@@ -211,7 +211,8 @@ Log files written:
 | `AI_BASE_URL` | ❌ | `https://api.openai.com/v1` | OpenAI-compatible API base URL |
 | `AI_MODEL` | ❌ | `gpt-4o-mini` | OpenAI model identifier |
 | `AI_MAX_TOKENS` | ❌ | `2048` | Max tokens per completion request |
-| `AI_TEMPERATURE` | ❌ | `0.7` | Sampling temperature (0.0 – 1.0) |
+| `AI_TEMPERATURE` | ❌ | `0.7` | Sampling temperature (0.0 – 2.0) |
+| `AI_TOP_P` | ❌ | `0.9` | Nucleus sampling probability mass (0.0 – 1.0) |
 | `AI_REQUEST_TIMEOUT` | ❌ | `30000` | Request timeout in milliseconds |
 | `AI_FRAUD_BLOCK_THRESHOLD` | ❌ | `0.85` | Risk score ≥ this → auto-block transaction |
 | `AI_FRAUD_REVIEW_THRESHOLD` | ❌ | `0.55` | Risk score ≥ this → flag for manual review |
@@ -228,6 +229,7 @@ AI_BASE_URL=https://api.openai.com/v1
 AI_MODEL=gpt-4o-mini
 AI_MAX_TOKENS=2048
 AI_TEMPERATURE=0.7
+AI_TOP_P=0.9
 AI_REQUEST_TIMEOUT=30000
 AI_FRAUD_BLOCK_THRESHOLD=0.85
 AI_FRAUD_REVIEW_THRESHOLD=0.55
@@ -235,6 +237,90 @@ AI_SURGE_MAX_MULTIPLIER=3.5
 AI_PLATFORM_FEE_PCT=8
 ML_MODEL_PATH=./ml-models
 FEATURE_STORE_UPDATE_INTERVAL=300000
+```
+
+---
+
+## Google Maps
+
+| Variable | Required | Description |
+|---|---|---|
+| `GOOGLE_MAPS_API_KEY` | ❌ | Google Maps API key for ride routing and geocoding. Leave empty to disable |
+
+```env
+GOOGLE_MAPS_API_KEY=
+```
+
+---
+
+## Monitoring
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `HEALTH_CHECK_TIMEOUT` | ❌ | `30000` | Timeout in milliseconds for health check probes |
+| `METRICS_ENABLED` | ❌ | `true` | Enable Prometheus-style metrics endpoint |
+
+```env
+HEALTH_CHECK_TIMEOUT=30000
+METRICS_ENABLED=true
+```
+
+---
+
+## Payment Facilitator
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `PAYMENT_FACILITATOR_PROVIDER` | ❌ | `mock` | Payment provider: `mock` \| `flutterwave` \| `paystack` |
+| `PAYMENT_FACILITATOR_SECRET_KEY` | ❌ | `mock_key` | Secret key from your payment provider |
+| `PAYMENT_FACILITATOR_PUBLIC_KEY` | ❌ | — | Public key from your payment provider |
+| `PAYMENT_FACILITATOR_WEBHOOK_SECRET` | ❌ | — | Webhook signing secret for verifying provider callbacks |
+| `PAYMENT_FACILITATOR_CURRENCY` | ❌ | `NGN` | Default currency code (e.g. `GHS`, `NGN`, `USD`) |
+| `PAYMENT_FACILITATOR_WEBHOOK_URL` | ❌ | — | Publicly reachable URL for your webhook endpoint |
+
+```env
+PAYMENT_FACILITATOR_PROVIDER=flutterwave
+PAYMENT_FACILITATOR_SECRET_KEY=CHANGE_ME
+PAYMENT_FACILITATOR_PUBLIC_KEY=CHANGE_ME
+PAYMENT_FACILITATOR_WEBHOOK_SECRET=CHANGE_ME
+PAYMENT_FACILITATOR_CURRENCY=GHS
+PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+```
+
+---
+
+## Q Points AI Market Maker
+
+These variables configure the autonomous AI participant that provides liquidity in the Q Points marketplace. Leave `AI_MARKET_ENABLED=false` in production until the market maker has been fully tested.
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `AI_MARKET_ENABLED` | ❌ | `false` | Enable the AI market-maker participant |
+| `AI_PARTICIPANT_USER_ID` | ❌ | `00000000-…0001` | UUID of the AI bot's user account |
+| `AI_TARGET_INVENTORY` | ❌ | `250000000000000` | Target Q Points inventory level |
+| `AI_MIN_INVENTORY` | ❌ | `50000000000000` | Minimum inventory before bot stops selling |
+| `AI_MAX_INVENTORY` | ❌ | `490000000000000` | Maximum inventory before bot stops buying |
+| `AI_TARGET_SPREAD_PCT` | ❌ | `2.0` | Target bid/ask spread percentage |
+| `AI_ORDER_BASE_QTY` | ❌ | `500` | Base order size in Q Points |
+| `AI_MAX_ORDER_QTY` | ❌ | `2500` | Maximum order size per trade |
+| `AI_MAX_OPEN_ORDERS` | ❌ | `10` | Maximum simultaneous open orders |
+| `AI_ORDER_TTL_SECONDS` | ❌ | `300` | Time-to-live for unfilled orders (seconds) |
+| `AI_RUN_INTERVAL_SECONDS` | ❌ | `30` | How often the market maker re-evaluates (seconds) |
+| `AI_MIN_CASH_RESERVE_USD` | ❌ | `5000` | Minimum USD cash reserve; bot pauses buying if below this |
+
+```env
+AI_MARKET_ENABLED=false
+AI_PARTICIPANT_USER_ID=00000000-0000-0000-0000-000000000001
+AI_TARGET_INVENTORY=250000000000000
+AI_MIN_INVENTORY=50000000000000
+AI_MAX_INVENTORY=490000000000000
+AI_TARGET_SPREAD_PCT=2.0
+AI_ORDER_BASE_QTY=500
+AI_MAX_ORDER_QTY=2500
+AI_MAX_OPEN_ORDERS=10
+AI_ORDER_TTL_SECONDS=300
+AI_RUN_INTERVAL_SECONDS=30
+AI_MIN_CASH_RESERVE_USD=5000
 ```
 
 ---
@@ -277,7 +363,7 @@ REDIS_DB=0
 
 # ── Email (SendGrid) ─────────────────────────────────────────
 SENDGRID_API_KEY=SG.CHANGE_ME
-EMAIL_FROM=noreply@example.com
+EMAIL_FROM=noreply@promptgenie.com
 EMAIL_FROM_NAME=PROMPT Genie
 
 # ── SMS (Twilio) ─────────────────────────────────────────────
@@ -294,7 +380,7 @@ THROTTLE_TTL=60
 THROTTLE_LIMIT=100
 
 # ── CORS ─────────────────────────────────────────────────────
-CORS_ORIGIN=https://app.example.com
+CORS_ORIGIN=https://promptgenie.app
 CORS_CREDENTIALS=true
 
 # ── Logging ──────────────────────────────────────────────────
@@ -309,6 +395,7 @@ AI_BASE_URL=https://api.openai.com/v1
 AI_MODEL=gpt-4o-mini
 AI_MAX_TOKENS=2048
 AI_TEMPERATURE=0.7
+AI_TOP_P=0.9
 AI_REQUEST_TIMEOUT=30000
 AI_FRAUD_BLOCK_THRESHOLD=0.85
 AI_FRAUD_REVIEW_THRESHOLD=0.55
@@ -316,6 +403,35 @@ AI_SURGE_MAX_MULTIPLIER=3.5
 AI_PLATFORM_FEE_PCT=8
 ML_MODEL_PATH=./ml-models
 FEATURE_STORE_UPDATE_INTERVAL=300000
+
+# ── Google Maps ──────────────────────────────────────────────
+GOOGLE_MAPS_API_KEY=
+
+# ── Monitoring ───────────────────────────────────────────────
+HEALTH_CHECK_TIMEOUT=30000
+METRICS_ENABLED=true
+
+# ── Payment Facilitator ───────────────────────────────────────
+PAYMENT_FACILITATOR_PROVIDER=flutterwave
+PAYMENT_FACILITATOR_SECRET_KEY=CHANGE_ME
+PAYMENT_FACILITATOR_PUBLIC_KEY=CHANGE_ME
+PAYMENT_FACILITATOR_WEBHOOK_SECRET=CHANGE_ME
+PAYMENT_FACILITATOR_CURRENCY=GHS
+PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+
+# ── Q Points AI Market Maker ──────────────────────────────────
+AI_MARKET_ENABLED=false
+AI_PARTICIPANT_USER_ID=00000000-0000-0000-0000-000000000001
+AI_TARGET_INVENTORY=250000000000000
+AI_MIN_INVENTORY=50000000000000
+AI_MAX_INVENTORY=490000000000000
+AI_TARGET_SPREAD_PCT=2.0
+AI_ORDER_BASE_QTY=500
+AI_MAX_ORDER_QTY=2500
+AI_MAX_OPEN_ORDERS=10
+AI_ORDER_TTL_SECONDS=300
+AI_RUN_INTERVAL_SECONDS=30
+AI_MIN_CASH_RESERVE_USD=5000
 ```
 
 ---
