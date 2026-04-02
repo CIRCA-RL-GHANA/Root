@@ -1,0 +1,54 @@
+# ============================================
+# Root Docker Ignore — OrionStack Monorepo
+# For builds using root context (e.g., docker-compose.prod.yml)
+# ============================================
+
+# Git
+.git
+.github
+
+# Flutter app (not needed for backend Docker build)
+thepg/.dart_tool
+thepg/.flutter-plugins
+thepg/.flutter-plugins-dependencies
+thepg/build
+thepg/.packages
+thepg/ios/Pods
+thepg/ios/.symlinks
+thepg/.pub-cache
+
+# Backend dev artifacts
+orionstack-backend--main/node_modules
+orionstack-backend--main/dist
+orionstack-backend--main/coverage
+orionstack-backend--main/uploads/*
+orionstack-backend--main/logs/*
+
+# Shared (not needed in Docker)
+shared/
+
+# Environment (injected separately)
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!DEPLOYMENT.md
+!README.md
+
+# Certbot data (mounted as volume)
+certbot/
+
+# Scripts (not needed inside containers)
+scripts/

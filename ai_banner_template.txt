@@ -1,0 +1,25 @@
+/// AI Banner snippet for Column-body screens (used by replace scripts)
+/// Replace the $MODULE_COLOR placeholder with actual color constant
+
+Consumer<AIInsightsNotifier>(
+  builder: (context, ai, _) {
+    if (ai.insights.isEmpty) return const SizedBox.shrink();
+    return Container(
+      color: $MODULE_COLOR.withOpacity(0.07),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          Icon(Icons.auto_awesome, size: 14, color: $MODULE_COLOR),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'AI: ${ai.insights.first['title'] ?? ''}',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: $MODULE_COLOR),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  },
+),

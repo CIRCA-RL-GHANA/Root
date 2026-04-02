@@ -1,0 +1,36 @@
+{
+  "name": "thedep-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PROMPT Genie Monorepo — NestJS backend + Flutter frontend",
+  "scripts": {
+    "dev:backend": "cd orionstack-backend--main && npm run start:dev",
+    "dev:frontend": "cd thepg && flutter run",
+
+    "build:backend": "cd orionstack-backend--main && npm run build",
+    "build:frontend:apk": "cd thepg && flutter build apk",
+    "build:frontend:ios": "cd thepg && flutter build ios",
+
+    "test:backend": "cd orionstack-backend--main && npm run test",
+    "test:frontend": "cd thepg && flutter test",
+
+    "lint:backend": "cd orionstack-backend--main && npm run lint",
+    "lint:frontend": "cd thepg && flutter analyze",
+
+    "db:migrate": "cd orionstack-backend--main && npm run migration:run",
+    "db:revert": "cd orionstack-backend--main && npm run migration:revert",
+
+    "setup:backend": "cd orionstack-backend--main && npm install",
+    "setup:frontend": "cd thepg && flutter pub get",
+    "setup": "npm run setup:backend && npm run setup:frontend",
+
+    "generate:swagger": "cd orionstack-backend--main && npm run start -- --entryFile main & sleep 5 && curl -s http://localhost:3000/api/docs-json -o shared/schemas/openapi.json && kill %1",
+
+    "clean:backend": "cd orionstack-backend--main && rm -rf dist node_modules",
+    "clean:frontend": "cd thepg && flutter clean",
+    "clean": "npm run clean:backend && npm run clean:frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,56 @@
+# ============================================
+# Root-level .gitignore for OrionStack Monorepo
+# ============================================
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Secrets & keystores
+*.jks
+*.keystore
+keystore.properties
+google-services.json
+GoogleService-Info.plist
+
+# Nested repo build artifacts (orionstack-backend--main)
+orionstack-backend--main/dist/
+orionstack-backend--main/node_modules/
+orionstack-backend--main/logs/
+orionstack-backend--main/uploads/
+orionstack-backend--main/.env
+orionstack-backend--main/.env.*
+
+# Nested repo build artifacts (thepg)
+thepg/build/
+thepg/.dart_tool/
+thepg/.flutter-plugins
+thepg/.flutter-plugins-dependencies
+thepg/pubspec.lock
+thepg/.packages
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Node (root)
+node_modules/

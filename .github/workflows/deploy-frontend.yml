@@ -1,0 +1,97 @@
+name: Deploy PWA → Vercel
+
+# SUPERSEDED — PWA → Vercel is now handled by flutter.yml (build-and-deploy-web job).
+# This file is kept as a manual emergency re-deploy trigger only.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options: [production, preview]
+
+concurrency:
+  group: deploy-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    name: Build Flutter Web + Deploy to Vercel
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    defaults:
+      run:
+        working-directory: thepg
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          channel: 'stable'
+          cache: true
+          cache-key: flutter-${{ hashFiles('thepg/pubspec.lock') }}
+
+      - name: Flutter version info
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze code
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test --reporter expanded || true
+
+      - name: Build Flutter Web (CanvasKit)
+        run: |
+          flutter build web \
+            --release \
+            --web-renderer canvaskit \
+            --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.promptgenie.app' }} \
+            --dart-define=ENVIRONMENT=production \
+            --pwa-strategy offline-first \
+            --source-maps
+        env:
+          FLUTTER_WEB_AUTO_DETECT: 'true'
+
+      - name: Verify build output
+        run: |
+          echo "=== Build output size ==="
+          du -sh build/web/
+          ls -la build/web/
+          echo "=== Service worker check ==="
+          test -f build/web/flutter_service_worker.js && echo "✓ Service worker present" || echo "✗ Service worker MISSING"
+          test -f build/web/manifest.json && echo "✓ manifest.json present" || echo "✗ manifest.json MISSING"
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Deploy to Vercel Production
+        run: |
+          vercel build/web \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            --prod \
+            --yes \
+            --name=promptgenie-pwa
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Post-deploy smoke test
+        run: |
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' '${{ vars.VERCEL_URL || "https://promptgenie.app" }}')
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then
+            echo "::error::Smoke test failed — HTTP $STATUS"
+            exit 1
+          fi
+          echo "✓ Smoke test passed"

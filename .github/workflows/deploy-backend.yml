@@ -1,0 +1,145 @@
+name: Deploy Backend → Hostinger VPS
+
+# SUPERSEDED — Backend → Hostinger VPS is now handled by backend.yml (deploy job).
+# This file is kept as a manual emergency re-deploy trigger only.
+on:
+  workflow_dispatch:
+    inputs:
+      skip_migrations:
+        description: 'Skip database migrations'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: deploy-backend-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  lint-and-build:
+    name: Lint & TypeScript Build Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orionstack-backend--main
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: orionstack-backend--main/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeScript compile check
+        run: npm run build
+
+  deploy:
+    name: Deploy to Hostinger VPS
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Copy code to VPS via rsync ──────────────────────────────────────────
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Sync source code to VPS
+        run: |
+          rsync -avz --delete \
+            --exclude='.git*' \
+            --exclude='node_modules' \
+            --exclude='thepg' \
+            --exclude='**/dist' \
+            --exclude='**/.dart_tool' \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT || 22 }} -o StrictHostKeyChecking=no" \
+            ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/orionstack/
+
+      # ── Execute deployment on VPS ───────────────────────────────────────────
+      - name: Run deployment on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+            cd /opt/orionstack
+
+            echo "=== [1/5] Pulling latest images ==="
+            docker compose -f docker-compose.prod.yml pull --quiet
+
+            echo "=== [2/5] Building app image ==="
+            docker compose -f docker-compose.prod.yml build --no-cache app
+
+            echo "=== [3/5] Starting services ==="
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans postgres redis
+
+            echo "=== [4/5] Running database migrations ==="
+            if [ "${{ github.event.inputs.skip_migrations }}" != "true" ]; then
+              docker compose -f docker-compose.prod.yml run --rm \
+                -e NODE_ENV=production \
+                app sh -c "node dist/main.js migration:run" || \
+              docker compose -f docker-compose.prod.yml exec -T app \
+                sh -c "npm run migration:run" || true
+            else
+              echo "Skipping migrations (manually requested)"
+            fi
+
+            echo "=== [5/5] Deploying app + nginx ==="
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            echo "=== Waiting for health check ==="
+            for i in $(seq 1 24); do
+              STATUS=$(docker compose -f docker-compose.prod.yml exec -T app \
+                wget -qO- http://localhost:3000/api/v1/health 2>/dev/null | grep -c '"status":"ok"' || true)
+              if [ "$STATUS" -eq 1 ]; then
+                echo "✓ API is healthy after ${i}×5s"
+                break
+              fi
+              if [ "$i" -eq 24 ]; then
+                echo "✗ Health check timed out after 120s"
+                docker compose -f docker-compose.prod.yml logs --tail=50 app
+                exit 1
+              fi
+              sleep 5
+            done
+
+            echo "=== Cleanup ==="
+            docker image prune -f --filter "until=24h"
+            echo "✓ Deployment complete"
+
+      - name: API smoke test
+        run: |
+          sleep 5
+          STATUS=$(curl -sk -o /dev/null -w '%{http_code}' \
+            "https://${{ secrets.VPS_HOST }}/api/v1/health" \
+            -H "Accept: application/json")
+          echo "Health endpoint HTTP status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then
+            echo "::error::API health check failed — HTTP $STATUS"
+            exit 1
+          fi
+          echo "✓ Backend smoke test passed"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

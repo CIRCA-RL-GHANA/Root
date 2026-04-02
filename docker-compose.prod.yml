@@ -1,0 +1,155 @@
+# ============================================
+# Production Docker Compose - OrionStack Full Stack
+# Includes: NestJS Backend, PostgreSQL, Redis, Nginx Reverse Proxy
+# ============================================
+version: '3.8'
+
+services:
+  # ---- Nginx Reverse Proxy ----
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: orionstack-nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      # PWA is now served from Vercel — no local static mount needed
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - orionstack-network
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ---- Certbot (SSL auto-renewal) ----
+  certbot:
+    image: certbot/certbot:latest
+    container_name: orionstack-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - orionstack-network
+
+  # ---- PostgreSQL Database ----
+  postgres:
+    image: postgres:15-alpine
+    container_name: orionstack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: '--auth-host=scram-sha-256'
+    ports:
+      - '127.0.0.1:${DB_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - orionstack-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-orionstack}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # ---- Redis Cache ----
+  redis:
+    image: redis:7-alpine
+    container_name: orionstack-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+        --appendonly yes
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+        --requirepass ${REDIS_PASSWORD:-}
+    ports:
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - orionstack-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ---- NestJS Backend Application ----
+  app:
+    build:
+      context: ./orionstack-backend--main
+      dockerfile: Dockerfile
+      target: production
+    container_name: orionstack-app
+    restart: unless-stopped
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - app_logs:/app/logs
+      - app_uploads:/app/uploads
+      - ./orionstack-backend--main/ml-models:/app/ml-models:ro
+    networks:
+      - orionstack-network
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/api/v1/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_logs:
+    driver: local
+  app_uploads:
+    driver: local
+
+networks:
+  orionstack-network:
+    driver: bridge
