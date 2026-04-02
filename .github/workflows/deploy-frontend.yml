@@ -33,7 +33,7 @@ jobs:
       - name: Setup Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          flutter-version: '3.22.0'
           channel: 'stable'
           cache: true
           cache-key: flutter-${{ hashFiles('thepg/pubspec.lock') }}

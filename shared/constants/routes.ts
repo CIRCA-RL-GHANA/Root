@@ -72,7 +72,6 @@ export const API_ROUTES = {
     ENGAGEMENTS: '/social/engagements',
   },
   CALENDAR: { BASE: '/calendar' },
-  PLANNER: { TRANSACTIONS: '/planner/transactions', SUMMARY: '/planner/summary' },
   STATEMENT: { BASE: '/statement' },
   WISHLIST: { BASE: '/wishlist' },
   INTERESTS: {
