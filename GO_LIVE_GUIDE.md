@@ -186,8 +186,14 @@ The script will then automatically:
 - Configure a firewall (UFW) to allow only ports 22, 80, and 443
 - Install fail2ban (blocks brute-force SSH attacks)
 - Create the `/opt/promptgenie` directory
+- Issue an SSL certificate via Let's Encrypt (Certbot standalone)
+- Patch `nginx/nginx.conf` with the correct SSL cert domain
+- Register a nightly cron job to auto-renew the SSL certificate
+- Configure logrotate for app log files
 
 When it finishes, you will see `✓ VPS initialization complete`.
+
+> **Warning — wrong secret names printed at end of script:** The summary printed by `vps-init.sh` will show `VPS_HOST`, `VPS_USER`, etc. as GitHub secret names. **These are wrong.** The actual GitHub Actions workflows in this repo require these exact names: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PORT`. Ignore the script's printed names and use the values from Step 15c instead.
 
 > **CRITICAL — Do not disconnect SSH yet.**
 >
@@ -714,6 +720,11 @@ AUTH_RATE_LIMIT=5
 # Must exactly match your PWA domain — no trailing slash
 CORS_ORIGIN=https://promptgenie.app
 CORS_CREDENTIALS=true
+
+# ── WebSocket / Socket.IO ──────────────────────────────────────────────────────
+# Must match the PWA domain — used for Socket.IO CORS validation
+WEBSOCKET_ENABLED=true
+WEBSOCKET_CORS_ORIGIN=https://promptgenie.app
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 LOG_LEVEL=info
@@ -1391,6 +1402,12 @@ make deploy
 ### make deploy fails immediately — "DEPLOY_HOST not set"
 This only matters for CI. On the server itself, you run `make deploy` directly — it does not need that variable.
 
+### CI pipeline fails — "No such secret" or deployment step is skipped silently
+The GitHub Actions workflows expect secrets named exactly `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, and `DEPLOY_PORT`. The `vps-init.sh` script's end-of-run summary incorrectly prints `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT`. If you followed those printed names, the secrets are named incorrectly. Delete them and recreate with the correct names (see Step 15c).
+
+### make deploy fails — "environment variable is not set or has default value"
+The `deploy.sh` preflight check detected that one of `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, or `PIN_ENCRYPTION_KEY` is empty or still contains a `CHANGE_ME` placeholder. Open `.env` and fill in all real values for those four variables.
+
 ### Docker build fails with "npm ERR! code ENOTFOUND"
 The Docker container cannot reach the internet. Check your server's DNS: `cat /etc/resolv.conf`. Should show `nameserver 8.8.8.8` or similar. If missing: `echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf`
 
@@ -1484,6 +1501,12 @@ docker compose -f docker-compose.prod.yml restart app
 # Restart everything
 docker compose -f docker-compose.prod.yml down
 docker compose -f docker-compose.prod.yml up -d
+
+# Rollback app to the previous image (does not revert migrations)
+make rollback
+
+# Run pre-deployment preflight checks only (without deploying)
+make preflight
 
 # Manual database backup
 docker compose -f docker-compose.prod.yml exec postgres \

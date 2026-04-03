@@ -51,15 +51,25 @@ flutter run -d chrome           # PWA in browser
 
 | Command | Description |
 |---|---|
-| `make deploy` | Full production deployment |
+| `make deploy` | Full production deployment (preflight + build + deploy + healthcheck) |
+| `make preflight` | Run pre-deployment checks without deploying |
+| `make rollback` | Roll app container back to previous image (does not revert migrations) |
+| `make restart` | Restart all containers |
+| `make restart-app` | Rebuild and restart app container only (zero-downtime) |
+| `make down` | Stop all production services |
 | `make healthcheck` | Check all service health |
 | `make status` | View container status and resource usage |
 | `make logs SERVICE=app` | Tail application logs |
 | `make logs SERVICE=postgres` | Tail database logs |
 | `make logs SERVICE=nginx` | Tail Nginx logs |
-| `make migrate` | Run migrations locally (requires Node.js) |
-| `make migrate-prod` | Run migrations inside production container |
+| `make migrate` | Run migrations locally (requires Node.js + ts-node) |
+| `make migrate-prod` | Run migrations inside production container (compiled JS) |
 | `make ssl DOMAIN=<d> EMAIL=<e>` | Provision Let's Encrypt SSL |
+| `make build-docker` | Rebuild production Docker image without deploying |
+| `make build-apk` | Build Android APK (release, obfuscated) |
+| `make build-aab` | Build Android App Bundle for Play Store |
+| `make build-ios` | Build iOS IPA |
+| `make build-web` | Build Flutter PWA |
 
 ---
 
