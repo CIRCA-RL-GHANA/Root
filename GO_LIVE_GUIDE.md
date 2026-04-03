@@ -232,6 +232,26 @@ ls
 # You should see: docker-compose.prod.yml  Makefile  nginx/  scripts/  ...
 ```
 
+**Verify the nginx.conf SSL paths:**
+
+The `nginx/nginx.conf` file ships with certificate paths already set to `api.promptgenie.app`. Confirm they are correct:
+
+```bash
+grep ssl_certificate nginx/nginx.conf
+# Expected output:
+#   ssl_certificate /etc/letsencrypt/live/api.promptgenie.app/fullchain.pem;
+#   ssl_certificate_key /etc/letsencrypt/live/api.promptgenie.app/privkey.pem;
+```
+
+> **If you are using a different API domain** (not `api.promptgenie.app`), update those two lines now:
+> ```bash
+> DOMAIN=api.yourdomain.com   # ← your actual API domain
+> sed -i "s|api.promptgenie.app|${DOMAIN}|g" nginx/nginx.conf
+> grep ssl_certificate nginx/nginx.conf   # verify
+> ```
+
+> **Why this matters:** nginx will refuse to start if the certificate paths do not match files that exist on disk. This is the most common cause of `make deploy` failing at the nginx startup step (see Troubleshooting Step 18 if this happens).
+
 ---
 
 ## 8. Set Up All Third-Party Services
@@ -759,9 +779,9 @@ cd /opt/promptgenie
 ./scripts/validate-env.sh --strict
 ```
 
-You should see all green checkmarks. The validator checks that all required variables are set and that none still contain placeholder values like `CHANGE_ME`.
+Expected output: the **root `.env` section** should be all green checkmarks. The **backend `.env` section** will show yellow warnings — this is normal. The validator auto-creates `orionstack-backend--main/.env` from the backend's `.env.example` file (which contains placeholder values), and those placeholders trigger warnings. In production, Docker reads config from the **root `.env` only** — the backend-specific file is only used for local development outside Docker. You can safely ignore those warnings.
 
-**Common validation failures and fixes:**
+**If the root section shows errors, do not proceed.** Common validation failures and fixes:
 
 | Error | Cause | Fix |
 |---|---|---|
@@ -902,6 +922,13 @@ curl https://api.promptgenie.app/api/v1/health/live
 curl https://api.promptgenie.app/api/v1/health/ready
 ```
 Both return `HTTP 200` when healthy. These are the same endpoints your load balancer or Kubernetes liveness/readiness probes would call.
+
+### WebSocket smoke test — confirms real-time chat is reachable
+```bash
+# Check that nginx proxies the Socket.IO handshake (should return HTTP 200 or 400, never 404)
+curl -i https://api.promptgenie.app/socket.io/?EIO=4\&transport=polling
+```
+Any response **other than 404** means nginx is correctly forwarding WebSocket traffic to the NestJS app. A `400 Bad Request` from Socket.IO is the expected response when no auth token is provided — that is correct.
 
 ### What a broken deployment looks like
 - `curl: (6) Could not resolve host` → DNS has not propagated yet. Wait longer.
@@ -1298,6 +1325,22 @@ BACKUPS
 
 ### "Permission denied" when running SSH
 Your SSH key is not authorized. Re-run Step 15b. Make sure you are using the correct username (`promptgenie`, not `root`).
+
+### make deploy fails immediately — "Too many redirects" or nginx exits at startup
+nginx cannot find the SSL certificate. The cert paths in `nginx/nginx.conf` do not match where Certbot stored the certificate. On the server:
+```bash
+# Check where the cert actually lives
+ls /opt/promptgenie/certbot/conf/live/
+# Note the directory name shown (e.g. api.promptgenie.app)
+
+# Patch nginx.conf to match
+DOMAIN=api.promptgenie.app   # ← replace with the directory name shown above
+sed -i "s|/etc/letsencrypt/live/[^/]*/fullchain.pem|/etc/letsencrypt/live/${DOMAIN}/fullchain.pem|g" /opt/promptgenie/nginx/nginx.conf
+sed -i "s|/etc/letsencrypt/live/[^/]*/privkey.pem|/etc/letsencrypt/live/${DOMAIN}/privkey.pem|g" /opt/promptgenie/nginx/nginx.conf
+
+# Then redeploy
+make deploy
+```
 
 ### make deploy fails immediately — "DEPLOY_HOST not set"
 This only matters for CI. On the server itself, you run `make deploy` directly — it does not need that variable.
