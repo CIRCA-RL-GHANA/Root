@@ -1,4 +1,4 @@
-# Quick Reference Guide
+﻿# Quick Reference Guide
 
 Concise commands, patterns, and lookups for day-to-day development and operations.
 
@@ -77,7 +77,7 @@ docker compose -f docker-compose.prod.yml logs postgres --tail 50
 
 # Exec into container
 docker compose -f docker-compose.prod.yml exec app sh
-docker compose -f docker-compose.prod.yml exec postgres psql -U postgres -d orionstack_prod
+docker compose -f docker-compose.prod.yml exec postgres psql -U postgres -d ${DB_NAME:-promptgenie_prod}
 
 # Dev stack
 docker compose up -d            # Start postgres + redis (dev)

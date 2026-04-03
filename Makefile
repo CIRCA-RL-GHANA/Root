@@ -1,5 +1,5 @@
 # ============================================
-# Makefile — OrionStack Production Commands
+# Makefile — PROMPT Genie Production Commands
 # ============================================
 .PHONY: help setup dev build deploy logs status healthcheck rollback clean ssl migrate
 
@@ -59,7 +59,7 @@ preflight: ## Run pre-deployment checks
 	chmod +x scripts/*.sh
 	./scripts/deploy.sh preflight
 
-ssl: ## Setup SSL certificate (usage: make ssl DOMAIN=yourdomain.com EMAIL=admin@yourdomain.com)
+ssl: ## Setup SSL certificate (usage: make ssl DOMAIN=api.promptgenie.app EMAIL=admin@promptgenie.app)
 	chmod +x scripts/*.sh
 	./scripts/setup-ssl.sh $(DOMAIN) $(EMAIL)
 
@@ -67,7 +67,7 @@ ssl: ## Setup SSL certificate (usage: make ssl DOMAIN=yourdomain.com EMAIL=admin
 status: ## Show service status
 	$(COMPOSE_PROD) ps
 	@echo ""
-	@docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" orionstack-app orionstack-postgres orionstack-redis orionstack-nginx 2>/dev/null || true
+	@docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" promptgenie-app promptgenie-postgres promptgenie-redis promptgenie-nginx 2>/dev/null || true
 
 healthcheck: ## Run health checks on all services
 	chmod +x scripts/*.sh
@@ -97,7 +97,7 @@ migrate-revert: ## Revert last database migration
 	cd orionstack-backend--main && npm run migration:revert
 
 migrate-prod: ## Run migrations inside production container
-	docker exec orionstack-app node -e "require('./dist/database/data-source').AppDataSource.runMigrations()"
+	docker exec promptgenie-app node -e "require('./dist/database/data-source').AppDataSource.runMigrations()"
 
 # ---- Testing ----
 test-backend: ## Run backend tests
