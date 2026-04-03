@@ -99,8 +99,8 @@ sudo apt-get install -y make
 ### 4. Clone Repository
 
 ```bash
-git clone <repo-url> /opt/prompt-genie
-cd /opt/prompt-genie
+git clone <repo-url> /opt/promptgenie
+cd /opt/promptgenie
 ```
 
 ### 5. Set Script Permissions
@@ -307,11 +307,11 @@ Nginx continues serving requests during app container restart. Downtime is limit
 
 ```bash
 # Identify previous image tag
-docker images orionstack-app --format "table {{.Tag}}\t{{.CreatedAt}}"
+docker images promptgenie-app --format "table {{.Tag}}\t{{.CreatedAt}}"
 
 # Roll back to previous image
 docker compose -f docker-compose.prod.yml stop app
-docker tag orionstack-app:<previous-tag> orionstack-app:latest
+docker tag promptgenie-app:<previous-tag> promptgenie-app:latest
 docker compose -f docker-compose.prod.yml up -d app
 ```
 
@@ -385,7 +385,7 @@ Add to crontab (`crontab -e`):
 
 ```cron
 # Daily database backup at 2am
-0 2 * * * docker compose -f /opt/prompt-genie/docker-compose.prod.yml exec -T postgres pg_dump -U postgres orionstack_prod > /backups/db_$(date +\%Y\%m\%d).sql 2>&1
+0 2 * * * docker compose -f /opt/promptgenie/docker-compose.prod.yml exec -T postgres pg_dump -U postgres promptgenie_prod > /backups/db_$(date +\%Y\%m\%d).sql 2>&1
 
 # Keep last 30 days
 0 3 * * * find /backups -name "db_*.sql" -mtime +30 -delete
@@ -422,7 +422,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /opt/prompt-genie
+            cd /opt/promptgenie
             git pull origin main
             make deploy
 ```

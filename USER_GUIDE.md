@@ -284,5 +284,5 @@ Higher transaction limits require identity verification:
 
 - **In-app help:** Utility → Help & FAQ
 - **Live chat support:** QualChat → Support
-- **Email:** support@example.com
+- **Email:** support@promptgenie.com
 - **Response time:** Within 24 hours on business days

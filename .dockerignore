@@ -1,5 +1,5 @@
 # ============================================
-# Root Docker Ignore — OrionStack Monorepo
+# Root Docker Ignore — PROMPT Genie Monorepo
 # For builds using root context (e.g., docker-compose.prod.yml)
 # ============================================
 

@@ -56,7 +56,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - orionstack-network
+      - promptgenie-network
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-promptgenie}']
       interval: 10s
@@ -83,7 +83,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - orionstack-network
+      - promptgenie-network
     healthcheck:
       test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-}', 'ping']
       interval: 10s
