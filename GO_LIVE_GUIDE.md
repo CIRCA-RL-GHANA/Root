@@ -49,7 +49,10 @@ Gather the following accounts and credentials. You will not be able to complete 
 | **Domain registrar** (Namecheap, Cloudflare, GoDaddy, etc.) | Your domain name (e.g. `promptgenie.app`) | See Step 2 |
 | **SendGrid** | Sending emails (OTP codes, receipts) | sendgrid.com |
 | **Twilio** | Sending SMS (OTP codes) | twilio.com |
+| **Flutterwave** or **Paystack** | Processing payments (choose one — see Section 8.4/8.5) | flutterwave.com / paystack.com |
 | **Vercel** | Hosting the Flutter PWA (free tier works) | vercel.com |
+| **OpenAI** *(optional)* | AI chat assistant and smart analytics | platform.openai.com |
+| **Google Cloud** *(optional)* | Maps APIs for ride routing and geocoding | console.cloud.google.com |
 
 ### Required Credentials (gather these now)
 
@@ -186,6 +189,29 @@ The script will then automatically:
 
 When it finishes, you will see `✓ VPS initialization complete`.
 
+> **CRITICAL — Do not disconnect SSH yet.**
+>
+> The setup script just disabled root login and password-based SSH authentication. The server now only accepts SSH key-based login. **If you close your terminal without adding your SSH public key for the `promptgenie` user, you will be locked out of the server.**
+>
+> While still in your current root SSH session, run this now:
+> ```bash
+> # Print your LOCAL machine's public key
+> # (Run this in a second terminal on your local machine, then copy the output)
+> cat ~/.ssh/id_ed25519.pub   # or id_rsa.pub if you use RSA
+>
+> # Back on the server, paste it into the promptgenie user's authorized_keys
+> echo "PASTE_YOUR_PUBLIC_KEY_HERE" >> /home/promptgenie/.ssh/authorized_keys
+> ```
+>
+> Test it works **before** closing the root session:
+> ```bash
+> # From a second terminal on your LOCAL machine
+> ssh promptgenie@YOUR_SERVER_IP
+> # Should connect without a password
+> ```
+>
+> If it connects successfully, you can safely close the root session.
+
 ---
 
 ## 7. Clone the Code onto the Server
@@ -233,6 +259,9 @@ openssl rand -base64 32 | tr -d '/+=' | head -c 32
 
 # REDIS_PASSWORD — Redis AUTH password
 openssl rand -base64 32 | tr -d '/+=' | head -c 32
+
+# PIN_ENCRYPTION_IV — 16-byte AES IV (32 hex characters)
+openssl rand -hex 16
 ```
 
 Run each command separately. Copy each output into your password manager immediately. **If you lose these after deployment, your users cannot log in and all encrypted PINs become unreadable.**
@@ -580,15 +609,17 @@ You now have all the values you need. Create the `.env` file on the server.
 
 ### Step 9a — Copy the template
 
+> **Important:** The `.env` file must sit in `/opt/promptgenie/` (the same directory as `docker-compose.prod.yml`). Docker Compose reads it from there. Do **not** put it inside `orionstack-backend--main/`.
+
 ```bash
 cd /opt/promptgenie
-cp orionstack-backend--main/.env.example orionstack-backend--main/.env
+cp .env.example .env
 ```
 
 ### Step 9b — Open for editing
 
 ```bash
-nano orionstack-backend--main/.env
+nano .env
 ```
 
 `nano` is a simple text editor. Arrow keys to navigate. `Ctrl+O` to save. `Ctrl+X` to exit.
@@ -600,7 +631,10 @@ Use the values you collected in Step 8. Here is the complete file with annotatio
 ```env
 # ── Application ───────────────────────────────────────────────────────────────
 NODE_ENV=production
+APP_VERSION=1.0.0
 PORT=3000
+BACKEND_PORT=3000
+FRONTEND_PORT=5000
 API_PREFIX=api
 API_VERSION=v1
 
@@ -627,6 +661,7 @@ JWT_REFRESH_EXPIRES_IN=30d
 BCRYPT_ROUNDS=12
 OTP_EXPIRY_MINUTES=5
 PIN_ENCRYPTION_KEY=<paste PIN_ENCRYPTION_KEY from Section 8.1>
+PIN_ENCRYPTION_IV=<paste PIN_ENCRYPTION_IV from Section 8.1>
 
 # ── Redis ──────────────────────────────────────────────────────────────────────
 # REDIS_HOST must be "redis" (the Docker container name) — do not change this
@@ -639,6 +674,7 @@ REDIS_DB=0
 SENDGRID_API_KEY=<paste SG.xxxx key from Section 8.2>
 EMAIL_FROM=<paste verified sender email from Section 8.2>
 EMAIL_FROM_NAME=PROMPT Genie
+EMAIL_SUPPORT=support@promptgenie.com
 
 # ── SMS (Twilio) — see Section 8.3 for setup ──────────────────────────────────
 TWILIO_ACCOUNT_SID=<paste AC... value from Section 8.3>
@@ -652,6 +688,7 @@ UPLOAD_DESTINATION=./uploads
 # ── Rate Limiting ──────────────────────────────────────────────────────────────
 THROTTLE_TTL=60
 THROTTLE_LIMIT=100
+AUTH_RATE_LIMIT=5
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
 # Must exactly match your PWA domain — no trailing slash
@@ -739,6 +776,14 @@ You should see all green checkmarks. The validator checks that all required vari
 
 ## 10. Get an SSL Certificate (HTTPS)
 
+> **Skip this step if `vps-init.sh` completed successfully.**
+> The server setup script in Step 6 already issued your SSL certificate via Certbot standalone. You can confirm with:
+> ```bash
+> ls /opt/promptgenie/certbot/conf/live/api.promptgenie.app/
+> # If you see fullchain.pem and privkey.pem, skip to the Verify section below.
+> ```
+> Only run `make ssl` if the cert is missing or expired.
+
 This gives your API the padlock (HTTPS). It is free via Let's Encrypt.
 
 > **Wait** until `nslookup api.promptgenie.app` returns your server IP before running this. The certificate will fail if DNS has not propagated yet.
@@ -808,10 +853,10 @@ Migrations create all the database tables that the app needs. This only needs to
 
 ```bash
 cd /opt/promptgenie
-make migrate
+make migrate-prod
 ```
 
-This runs 25 migrations in order. You will see each migration name print to the console as it applies.
+This runs 25 migrations in order **inside the running Docker container** (the server does not need Node.js installed locally). You will see each migration name print to the console as it applies.
 
 **Verify all migrations ran:**
 ```bash
@@ -860,27 +905,29 @@ Expected: `HTTP 401 Unauthorized` — this is correct. It means the endpoint exi
 
 The Flutter web app (PWA) is deployed separately to Vercel's global CDN.
 
-### Step 13a — Create a Vercel account
+### Step 14a — Create a Vercel account
 
 Go to [vercel.com](https://vercel.com) and sign up with your GitHub account.
 
-### Step 13b — Import the Flutter repo
+### Step 14b — Import the Flutter repo
 
 1. In Vercel, click **Add New → Project**.
 2. Select the `CIRCA-RL-GHANA/Flutter-Ready` repository.
-3. Vercel will detect `vercel.json` in the root and configure automatically.
-4. Under **Environment Variables**, add:
+3. Vercel will detect `vercel.json` in the root and configure the build automatically (`flutter build web --release --web-renderer canvaskit`).
+4. Under **Environment Variables**, the `API_BASE_URL` is already set in `vercel.json` to `https://api.promptgenie.app`. You only need to add variables here if you want to override that default or add optional services:
 
-   | Variable | Value |
-   |---|---|
-   | `API_BASE_URL` | `https://api.promptgenie.app` |
-   | `ENVIRONMENT` | `production` |
+   | Variable | Value | Required? |
+   |---|---|---|
+   | `API_BASE_URL` | `https://api.promptgenie.app` | Only if you changed it |
+   | `GOOGLE_MAPS_API_KEY` | Your AIza... key from Section 8.7 | Only if using Maps in the PWA |
+
+   > **Note:** The Flutter web build embeds `API_BASE_URL` at compile time via `--dart-define`. If you add `GOOGLE_MAPS_API_KEY` here and want it embedded in the web build, you must also add `--dart-define=GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}` to the `buildCommand` in `thepg/vercel.json`.
 
 5. Click **Deploy**.
 
 The first deploy takes about 4 minutes to build the Flutter web app.
 
-### Step 13c — Configure your domain on Vercel
+### Step 14c — Configure your domain on Vercel
 
 1. In your Vercel project, go to **Settings → Domains**.
 2. Add `promptgenie.app`.
@@ -899,7 +946,7 @@ The first deploy takes about 4 minutes to build the Flutter web app.
 
 Every time you push code to the `main` branch, GitHub will automatically deploy to your server. You need to add SSH credentials as GitHub Secrets.
 
-### Step 14a — Create a deployment SSH key (on your local machine)
+### Step 15a — Create a deployment SSH key (on your local machine)
 
 ```bash
 # Generate a NEW key pair just for deployments (do not reuse your personal key)
@@ -910,7 +957,7 @@ ssh-keygen -t ed25519 -C "promptgenie-deploy" -f ~/.ssh/promptgenie_deploy
 # ~/.ssh/promptgenie_deploy.pub  ← public key  (goes onto the server)
 ```
 
-### Step 14b — Authorize the key on your server
+### Step 15b — Authorize the key on your server
 
 Copy the public key to the server:
 ```bash
@@ -929,7 +976,7 @@ echo "PASTE_PUBLIC_KEY_HERE" >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 ```
 
-### Step 14c — Add secrets to GitHub
+### Step 15c — Add secrets to GitHub
 
 1. Go to `github.com/CIRCA-RL-GHANA/Root` → **Settings → Secrets and variables → Actions**.
 2. Click **New repository secret** and add each of the following:
@@ -951,7 +998,7 @@ chmod 600 ~/.ssh/authorized_keys
    | `VERCEL_ORG_ID` | Found in your Vercel project settings |
    | `VERCEL_PROJECT_ID` | Found in your Vercel project settings |
 
-### Step 14d — Test it
+### Step 15d — Test it
 
 Push any small change (e.g. add a blank line to `README.md`) to the `main` branch:
 
