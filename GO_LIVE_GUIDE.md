@@ -893,9 +893,19 @@ curl -i https://api.promptgenie.app/api/v1/auth/me
 ```
 Expected: `HTTP 401 Unauthorized` — this is correct. It means the endpoint exists and is protecting itself.
 
+### Additional health probes (optional)
+```bash
+# Liveness probe — is the Node.js process alive?
+curl https://api.promptgenie.app/api/v1/health/live
+
+# Readiness probe — is the app ready to accept traffic?
+curl https://api.promptgenie.app/api/v1/health/ready
+```
+Both return `HTTP 200` when healthy. These are the same endpoints your load balancer or Kubernetes liveness/readiness probes would call.
+
 ### What a broken deployment looks like
 - `curl: (6) Could not resolve host` → DNS has not propagated yet. Wait longer.
-- `SSL: no certificate` error → SSL was not issued. Re-run Step 9.
+- `SSL: no certificate` error → SSL was not issued. Re-run Step 10.
 - `502 Bad Gateway` from nginx → The NestJS app is not running. Check logs: `make logs SERVICE=app`
 - `{"status":"error"}` in health response → Database connection failed. Check your DB_PASSWORD in `.env` and confirm `promptgenie-postgres` is healthy.
 
@@ -978,6 +988,12 @@ chmod 600 ~/.ssh/authorized_keys
 
 ### Step 15c — Add secrets to GitHub
 
+> **Secrets vs Variables:** GitHub has two separate concepts.
+> - **Secrets** (`Settings → Secrets and variables → Actions → Secrets`) — encrypted values hidden from logs. Used for passwords, keys, tokens.
+> - **Variables** (`Settings → Secrets and variables → Actions → Variables`) — plain-text values visible in logs. Used for non-sensitive config like URLs.
+
+#### Root repo & Backend repo — Backend deployment secrets
+
 1. Go to `github.com/CIRCA-RL-GHANA/Root` → **Settings → Secrets and variables → Actions**.
 2. Click **New repository secret** and add each of the following:
 
@@ -988,15 +1004,141 @@ chmod 600 ~/.ssh/authorized_keys
    | `DEPLOY_SSH_KEY` | Contents of `~/.ssh/promptgenie_deploy` (the private key — starts with `-----BEGIN OPENSSH PRIVATE KEY-----`) |
    | `DEPLOY_PORT` | `22` |
 
-3. Repeat for `github.com/CIRCA-RL-GHANA/NestJs-Ready` (backend repo) with the same secrets.
+3. Repeat the same 4 secrets for `github.com/CIRCA-RL-GHANA/NestJs-Ready` (the backend repo has its own CI pipeline).
 
-4. For the Flutter repo (`CIRCA-RL-GHANA/Flutter-Ready`), also go to **Settings → Secrets** and add:
+#### Flutter repo — Web (Vercel) secrets
+
+Go to `github.com/CIRCA-RL-GHANA/Flutter-Ready` → **Settings → Secrets and variables → Actions** and add:
+
+   | Secret name | Value | How to get it |
+   |---|---|---|
+   | `VERCEL_TOKEN` | Vercel API token | vercel.com → Settings → Tokens → Create |
+   | `VERCEL_ORG_ID` | Vercel org/team ID | vercel.com → Settings → General → scroll to Team ID |
+   | `VERCEL_PROJECT_ID` | Vercel project ID | Your Vercel project → Settings → General → scroll to Project ID |
+
+Also add these **Variables** (not secrets) under the same Actions settings page:
+
+   | Variable name | Value |
+   |---|---|
+   | `API_BASE_URL` | `https://api.promptgenie.app` |
+   | `VERCEL_URL` | `https://promptgenie.app` |
+
+#### Flutter repo — Android signing secrets
+
+The Android CI build signs the app with your release keystore. You must create this keystore first.
+
+**On your local machine, generate the keystore:**
+```bash
+# Run in Git Bash / Terminal (requires Java JDK — install from adoptium.net if not present)
+keytool -genkey -v \
+  -keystore promptgenie-release.jks \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000 \
+  -alias promptgenie \
+  -storetype JKS
+```
+
+When prompted:
+- **Keystore password:** choose a strong password and save it
+- **Key password:** choose another strong password (can be the same)
+- **First and last name:** your name or org name
+- **Organizational unit, Organization, City, State, Country:** fill in as appropriate
+
+This generates `promptgenie-release.jks` in your current directory.
+
+**Base64-encode it for GitHub:**
+```bash
+# Mac / Linux
+base64 -i promptgenie-release.jks | tr -d '\n'
+
+# Git Bash on Windows
+base64 -w 0 promptgenie-release.jks
+```
+
+Copy the entire output (a long single-line string).
+
+**Copy the keystore file to the right place:**
+```bash
+cp promptgenie-release.jks thepg/android/keystore/promptgenie-release.jks
+# (This file is gitignored — it will NOT be committed)
+```
+
+**Add secrets to the Flutter repo:**
 
    | Secret name | Value |
    |---|---|
-   | `VERCEL_TOKEN` | Your Vercel API token — get it at vercel.com → Settings → Tokens |
-   | `VERCEL_ORG_ID` | Found in your Vercel project settings |
-   | `VERCEL_PROJECT_ID` | Found in your Vercel project settings |
+   | `ANDROID_KEYSTORE_BASE64` | The base64 string from above |
+   | `ANDROID_KEYSTORE_PASSWORD` | The keystore password you chose |
+   | `ANDROID_KEY_PASSWORD` | The key password you chose |
+   | `ANDROID_KEY_ALIAS` | `promptgenie` |
+
+#### Flutter repo — iOS signing secrets
+
+iOS signing requires an Apple Developer account ($99/year) and a valid distribution certificate. This is only needed to publish to the App Store. **Skip this section if you are not targeting iOS yet.**
+
+1. **Create an Apple Developer account** at [developer.apple.com](https://developer.apple.com) → Enroll → Individual or Organization.
+
+2. **Create a distribution certificate:**
+   - Log in to [developer.apple.com/account](https://developer.apple.com/account) → Certificates, IDs & Profiles → Certificates.
+   - Click `+` → Choose **Apple Distribution**.
+   - Follow the CSR (Certificate Signing Request) instructions.
+   - Download the `.cer` file and double-click to install in Keychain Access.
+   - Export from Keychain as `.p12` with a password.
+
+3. **Base64-encode the certificate:**
+   ```bash
+   base64 -i YourCertificate.p12 | tr -d '\n'
+   ```
+
+4. **Create an App Store Connect API key:**
+   - Go to [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → Users and Access → Keys → Integrations → App Store Connect API.
+   - Click `+` → Name it `promptgenie-ci` → Role: **App Manager**.
+   - Download the `.p8` file (shown only once).
+   - Note the **Issuer ID** (shown at the top of the Keys page) and **Key ID**.
+
+5. **Update `thepg/ios/ExportOptions.plist`** with your Apple Team ID:
+   ```bash
+   # Find your Team ID at developer.apple.com → Account → Membership
+   # Edit the file and replace YOUR_TEAM_ID with your real Team ID
+   nano thepg/ios/ExportOptions.plist
+   ```
+
+6. **Add secrets to the Flutter repo:**
+
+   | Secret name | Value |
+   |---|---|
+   | `IOS_CERTIFICATE_BASE64` | Base64 string from step 3 |
+   | `IOS_CERTIFICATE_PASSWORD` | Password you used when exporting the `.p12` |
+   | `APPSTORE_ISSUER_ID` | Issuer ID from App Store Connect |
+   | `APPSTORE_API_KEY_ID` | Key ID from App Store Connect |
+   | `APPSTORE_API_PRIVATE_KEY` | Raw contents of the `.p8` file (open in a text editor and paste) |
+
+#### Flutter repo — Google Play secrets
+
+Required to automatically publish Android builds to the Play Store. **Skip if not publishing to Google Play yet.**
+
+1. **Create a Google Play Console account** at [play.google.com/console](https://play.google.com/console) ($25 one-time fee).
+
+2. **Create an app** → name it *PROMPT Genie* → package name `com.promptgenie.app`.
+
+3. **Create a service account for CI uploads:**
+   - In Play Console, go to **Setup → API access → Link to a Google Cloud project**.
+   - In the linked Google Cloud project, go to **IAM & Admin → Service Accounts → Create Service Account**.
+   - Name it `promptgenie-ci`, click Create.
+   - Grant the role: **Service Account User**.
+   - Click Done → click the service account → **Keys → Add Key → Create new key → JSON**.
+   - Download the JSON file.
+
+4. **Grant the service account release access:**
+   - Back in Play Console → **Setup → API access** → find your new service account → **Grant access**.
+   - Set permissions: **Release** → **Release manager** (for internal/alpha/beta tracks).
+
+5. **Add the secret to the Flutter repo:**
+
+   | Secret name | Value |
+   |---|---|
+   | `GOOGLE_PLAY_SERVICE_ACCOUNT` | Entire contents of the JSON file you downloaded |
 
 ### Step 15d — Test it
 
@@ -1046,6 +1188,25 @@ docker compose -f /opt/promptgenie/docker-compose.prod.yml exec -T postgres \
 
 ls -lh /backups/test_backup.sql
 # Should show a file greater than 0 bytes
+```
+
+### Back up the uploads directory
+
+User-uploaded files (avatars, documents) are stored in `/opt/promptgenie/orionstack-backend--main/uploads/`. Add a weekly backup alongside the database backup:
+
+```bash
+crontab -e
+```
+
+Add this line:
+```cron
+# Weekly uploads backup (Sundays at 3:30am UTC)
+30 3 * * 0 tar -czf /backups/uploads_$(date +\%Y\%m\%d).tar.gz -C /opt/promptgenie/orionstack-backend--main uploads/ 2>&1
+```
+
+**Restore uploads from backup (if needed):**
+```bash
+tar -xzf /backups/uploads_20260101.tar.gz -C /opt/promptgenie/orionstack-backend--main/
 ```
 
 ---
@@ -1099,7 +1260,7 @@ BACKUPS
 ## 18. Troubleshooting Common Problems
 
 ### "Permission denied" when running SSH
-Your SSH key is not authorized. Re-run Step 14b. Make sure you are using the correct username (`promptgenie`, not `root`).
+Your SSH key is not authorized. Re-run Step 15b. Make sure you are using the correct username (`promptgenie`, not `root`).
 
 ### make deploy fails immediately — "DEPLOY_HOST not set"
 This only matters for CI. On the server itself, you run `make deploy` directly — it does not need that variable.
@@ -1129,7 +1290,7 @@ Common cause: wrong `DB_PASSWORD` — the app's password does not match what Pos
 ```bash
 docker compose -f docker-compose.prod.yml down -v    # WARNING: deletes all data
 make deploy
-make migrate
+make migrate-prod
 ```
 
 ### SSL certificate fails — "too many redirects" or "challenge failed"
@@ -1172,7 +1333,7 @@ make status
 make deploy
 
 # Run new migrations after a code update
-make migrate
+make migrate-prod
 
 # Restart just the app (without touching the database)
 docker compose -f docker-compose.prod.yml restart app
