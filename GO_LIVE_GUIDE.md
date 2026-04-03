@@ -1192,7 +1192,7 @@ ls -lh /backups/test_backup.sql
 
 ### Back up the uploads directory
 
-User-uploaded files (avatars, documents) are stored in `/opt/promptgenie/orionstack-backend--main/uploads/`. Add a weekly backup alongside the database backup:
+User-uploaded files (avatars, documents) are stored in a **named Docker volume** (`promptgenie_app_uploads`). Docker named volumes do **not** live at a plain host path — they are managed by Docker at `/var/lib/docker/volumes/`. The correct way to back them up is to mount the volume into a temporary Alpine container:
 
 ```bash
 crontab -e
@@ -1201,13 +1201,37 @@ crontab -e
 Add this line:
 ```cron
 # Weekly uploads backup (Sundays at 3:30am UTC)
-30 3 * * 0 tar -czf /backups/uploads_$(date +\%Y\%m\%d).tar.gz -C /opt/promptgenie/orionstack-backend--main uploads/ 2>&1
+30 3 * * 0 docker run --rm -v promptgenie_app_uploads:/source:ro -v /backups:/backup alpine tar -czf /backup/uploads_$(date +\%Y\%m\%d).tar.gz -C /source . 2>&1
+```
+
+**Test it manually right now:**
+```bash
+docker run --rm \
+  -v promptgenie_app_uploads:/source:ro \
+  -v /backups:/backup \
+  alpine \
+  tar -czf /backup/test_uploads.tar.gz -C /source .
+
+ls -lh /backups/test_uploads.tar.gz
+# Non-zero size confirms the volume data is accessible
 ```
 
 **Restore uploads from backup (if needed):**
 ```bash
-tar -xzf /backups/uploads_20260101.tar.gz -C /opt/promptgenie/orionstack-backend--main/
+# Stop the app first so nothing writes during restore
+docker compose -f /opt/promptgenie/docker-compose.prod.yml stop app
+
+docker run --rm \
+  -v promptgenie_app_uploads:/dest \
+  -v /backups:/backup \
+  alpine \
+  tar -xzf /backup/uploads_20260101.tar.gz -C /dest
+
+# Restart the app
+docker compose -f /opt/promptgenie/docker-compose.prod.yml start app
 ```
+
+> **How the volume name is derived:** Docker Compose names volumes as `<project>_<volume>`. With the app directory `/opt/promptgenie/`, Docker Compose uses `promptgenie` as the project name, making the uploads volume `promptgenie_app_uploads`. Confirm with: `docker volume ls | grep uploads`
 
 ---
 

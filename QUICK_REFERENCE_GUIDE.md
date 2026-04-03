@@ -57,7 +57,8 @@ flutter run -d chrome           # PWA in browser
 | `make logs SERVICE=app` | Tail application logs |
 | `make logs SERVICE=postgres` | Tail database logs |
 | `make logs SERVICE=nginx` | Tail Nginx logs |
-| `make migrate` | Run pending DB migrations |
+| `make migrate` | Run migrations locally (requires Node.js) |
+| `make migrate-prod` | Run migrations inside production container |
 | `make ssl DOMAIN=<d> EMAIL=<e>` | Provision Let's Encrypt SSL |
 
 ---
@@ -423,7 +424,7 @@ const socket = io('wss://api.promptgenie.app/chat', {
 [ ] DB_SYNCHRONIZE=false
 [ ] docker compose -f docker-compose.prod.yml pull
 [ ] make deploy
-[ ] Migrations applied (make migrate)
+[ ] Migrations applied (make migrate-prod)
 [ ] Health check passing (curl https://api.promptgenie.app/api/v1/health)
 [ ] Smoke test: expected 401 → curl https://api.promptgenie.app/api/v1/auth/me
 ```
