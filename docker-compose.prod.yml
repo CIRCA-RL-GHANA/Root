@@ -1,5 +1,5 @@
 # ============================================
-# Production Docker Compose - OrionStack Full Stack
+# Production Docker Compose - PROMPT Genie Full Stack
 # Includes: NestJS Backend, PostgreSQL, Redis, Nginx Reverse Proxy
 # ============================================
 version: '3.8'
@@ -8,7 +8,7 @@ services:
   # ---- Nginx Reverse Proxy ----
   nginx:
     image: nginx:1.25-alpine
-    container_name: orionstack-nginx
+    container_name: promptgenie-nginx
     restart: unless-stopped
     ports:
       - '80:80'
@@ -23,7 +23,7 @@ services:
       app:
         condition: service_healthy
     networks:
-      - orionstack-network
+      - promptgenie-network
     healthcheck:
       test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost/health']
       interval: 30s
@@ -33,18 +33,18 @@ services:
   # ---- Certbot (SSL auto-renewal) ----
   certbot:
     image: certbot/certbot:latest
-    container_name: orionstack-certbot
+    container_name: promptgenie-certbot
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
-      - orionstack-network
+      - promptgenie-network
 
   # ---- PostgreSQL Database ----
   postgres:
     image: postgres:15-alpine
-    container_name: orionstack-postgres
+    container_name: promptgenie-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}
@@ -58,7 +58,7 @@ services:
     networks:
       - orionstack-network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-orionstack}']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-promptgenie}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,7 +70,7 @@ services:
   # ---- Redis Cache ----
   redis:
     image: redis:7-alpine
-    container_name: orionstack-redis
+    container_name: promptgenie-redis
     restart: unless-stopped
     command: >
       redis-server
@@ -100,7 +100,7 @@ services:
       context: ./orionstack-backend--main
       dockerfile: Dockerfile
       target: production
-    container_name: orionstack-app
+    container_name: promptgenie-app
     restart: unless-stopped
     expose:
       - '3000'
@@ -122,7 +122,7 @@ services:
       - app_uploads:/app/uploads
       - ./orionstack-backend--main/ml-models:/app/ml-models:ro
     networks:
-      - orionstack-network
+      - promptgenie-network
     healthcheck:
       test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/api/v1/health']
       interval: 30s
@@ -151,5 +151,5 @@ volumes:
     driver: local
 
 networks:
-  orionstack-network:
+  promptgenie-network:
     driver: bridge

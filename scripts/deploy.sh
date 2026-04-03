@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================
-# OrionStack Production Deployment Script
+# PROMPT Genie Production Deployment Script
 # ============================================
 set -euo pipefail
 
@@ -116,7 +116,7 @@ healthcheck() {
   log_info "Running health checks..."
 
   local app_health
-  app_health=$(docker exec orionstack-app wget -qO- http://localhost:3000/api/v1/health 2>/dev/null || echo "FAIL")
+  app_health=$(docker exec promptgenie-app wget -qO- http://localhost:3000/api/v1/health 2>/dev/null || echo "FAIL")
 
   if echo "$app_health" | grep -q '"status":"ok"'; then
     log_ok "Backend health check: PASSED"
@@ -128,7 +128,7 @@ healthcheck() {
 
   # Check database connectivity
   local db_check
-  db_check=$(docker exec orionstack-postgres pg_isready -U postgres 2>/dev/null || echo "FAIL")
+  db_check=$(docker exec promptgenie-postgres pg_isready -U postgres 2>/dev/null || echo "FAIL")
   if echo "$db_check" | grep -q "accepting connections"; then
     log_ok "Database health check: PASSED"
   else
@@ -138,7 +138,7 @@ healthcheck() {
 
   # Check Redis
   local redis_check
-  redis_check=$(docker exec orionstack-redis redis-cli ping 2>/dev/null || echo "FAIL")
+  redis_check=$(docker exec promptgenie-redis redis-cli ping 2>/dev/null || echo "FAIL")
   if [ "$redis_check" = "PONG" ]; then
     log_ok "Redis health check: PASSED"
   else
@@ -156,7 +156,7 @@ status() {
   echo ""
   log_info "Resource usage:"
   docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" \
-    orionstack-app orionstack-postgres orionstack-redis orionstack-nginx 2>/dev/null || true
+    promptgenie-app promptgenie-postgres promptgenie-redis promptgenie-nginx 2>/dev/null || true
 }
 
 # ---- Rollback ----

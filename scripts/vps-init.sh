@@ -9,8 +9,8 @@ set -euo pipefail
 # ── Parse args ──────────────────────────────────────────────────────────────
 DOMAIN=""
 EMAIL=""
-APP_DIR="/opt/orionstack"
-DEPLOY_USER="orionstack"
+APP_DIR="/opt/promptgenie"
+DEPLOY_USER="promptgenie"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -148,7 +148,7 @@ ok "SSH hardened (key-only, no root login)"
 
 # ── Kernel network tuning ────────────────────────────────────────────────────
 log "Tuning kernel network params..."
-cat > /etc/sysctl.d/99-orionstack.conf <<'EOF'
+cat > /etc/sysctl.d/99-promptgenie.conf <<'EOF'
 net.core.somaxconn = 65535
 net.ipv4.tcp_max_syn_backlog = 65535
 net.ipv4.ip_local_port_range = 1024 65535
@@ -156,15 +156,15 @@ net.ipv4.tcp_tw_reuse = 1
 net.ipv4.tcp_fin_timeout = 15
 vm.overcommit_memory = 1
 EOF
-sysctl -p /etc/sysctl.d/99-orionstack.conf >/dev/null
+sysctl -p /etc/sysctl.d/99-promptgenie.conf >/dev/null
 ok "Kernel tuning applied"
 
 # ── SSL via Let's Encrypt (Certbot standalone) ────────────────────────────────
 log "Issuing SSL certificate for $DOMAIN..."
 if [[ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]]; then
   docker run --rm -p 80:80 \
-    -v /opt/orionstack/certbot/conf:/etc/letsencrypt \
-    -v /opt/orionstack/certbot/www:/var/www/certbot \
+    -v /opt/promptgenie/certbot/conf:/etc/letsencrypt \
+    -v /opt/promptgenie/certbot/www:/var/www/certbot \
     certbot/certbot certonly \
       --standalone \
       --agree-tos \
@@ -190,16 +190,16 @@ fi
 
 # ── Auto-renew SSL via cron ───────────────────────────────────────────────────
 CRON_RENEW="0 3 * * * docker run --rm \
-  -v /opt/orionstack/certbot/conf:/etc/letsencrypt \
-  -v /opt/orionstack/certbot/www:/var/www/certbot \
+  -v /opt/promptgenie/certbot/conf:/etc/letsencrypt \
+  -v /opt/promptgenie/certbot/www:/var/www/certbot \
   certbot/certbot renew --quiet && \
-  docker exec orionstack-nginx nginx -s reload 2>/dev/null || true"
+  docker exec promptgenie-nginx nginx -s reload 2>/dev/null || true"
 
 (crontab -l 2>/dev/null | grep -v certbot; echo "$CRON_RENEW") | crontab -
 ok "SSL auto-renewal cron registered"
 
 # ── Logrotate ────────────────────────────────────────────────────────────────
-cat > /etc/logrotate.d/orionstack <<EOF
+cat > /etc/logrotate.d/promptgenie <<EOF
 $APP_DIR/logs/*.log {
     daily
     rotate 14
