@@ -871,6 +871,42 @@ promptgenie-certbot    Up
 
 Migrations create all the database tables that the app needs. This only needs to be done once on first deployment (and again when new migrations are added in future updates).
 
+### Step 12a — Pre-seed the AI market-maker account
+
+> **This step is mandatory.** Migration #13 (`CreateQPointsMarketTables`) inserts the AI market-maker's initial Q Points balance into `q_point_market_balances` with a foreign-key reference to the `users` table. If the AI participant row does not exist in `users` when migration #13 runs, the entire migration run will abort with a foreign-key violation and you will need to drop and recreate the database.
+
+The `.env.example` documents this requirement with the comment:
+> *"Create the matching users row before running migrations in production."*
+
+Run the following **once on a fresh database, before running migrations**. It is safe to re-run (the `ON CONFLICT` clause makes it idempotent):
+
+```bash
+# From /opt/promptgenie on the VPS
+# This sources only DB_USERNAME and DB_NAME from your .env into the current shell
+export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
+
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  psql -U "$DB_USERNAME" -d "$DB_NAME" -c \
+  "INSERT INTO users (id, email, phone_number, password_hash,
+                      first_name, last_name, user_type,
+                      account_status, is_email_verified, is_phone_verified)
+   VALUES ('00000000-0000-0000-0000-000000000001',
+           'ai-participant@system.internal', NULL,
+           'SYSTEM-ACCOUNT-NO-LOGIN',
+           'AI', 'Participant', 'ADMIN', 'ACTIVE', TRUE, TRUE)
+   ON CONFLICT (id) DO NOTHING;"
+```
+
+**Verify the row was inserted:**
+```bash
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  psql -U "$DB_USERNAME" -d "$DB_NAME" -c \
+  "SELECT id, email, user_type FROM users WHERE id = '00000000-0000-0000-0000-000000000001';"
+```
+Expected: one row with `email = ai-participant@system.internal` and `user_type = ADMIN`.
+
+### Step 12b — Run all migrations
+
 ```bash
 cd /opt/promptgenie
 make migrate-prod
@@ -951,14 +987,17 @@ Go to [vercel.com](https://vercel.com) and sign up with your GitHub account.
 1. In Vercel, click **Add New → Project**.
 2. Select the `CIRCA-RL-GHANA/Flutter-Ready` repository.
 3. Vercel will detect `vercel.json` in the root and configure the build automatically (`flutter build web --release --web-renderer canvaskit`).
-4. Under **Environment Variables**, the `API_BASE_URL` is already set in `vercel.json` to `https://api.promptgenie.app`. You only need to add variables here if you want to override that default or add optional services:
+4. Under **Environment Variables**, you only need to add optional services. No variables are required for the default deployment:
 
    | Variable | Value | Required? |
    |---|---|---|
-   | `API_BASE_URL` | `https://api.promptgenie.app` | Only if you changed it |
    | `GOOGLE_MAPS_API_KEY` | Your AIza... key from Section 8.7 | Only if using Maps in the PWA |
 
-   > **Note:** The Flutter web build embeds `API_BASE_URL` at compile time via `--dart-define`. If you add `GOOGLE_MAPS_API_KEY` here and want it embedded in the web build, you must also add `--dart-define=GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}` to the `buildCommand` in `thepg/vercel.json`.
+   > **Important — API domain is compiled in, not injected:** The Flutter app's backend URL is a compile-time constant defined in `thepg/lib/core/constants/env_config.dart` (hardcoded to `https://api.promptgenie.app/api/v1`). The `API_BASE_URL` variable in `vercel.json` sends a `--dart-define` flag to the build, but `env_config.dart` does **not** read it via `const String.fromEnvironment(...)`. Setting `API_BASE_URL` in the Vercel dashboard therefore has no effect on where the app points.
+   >
+   > **If you are deploying to a different backend domain**, edit `thepg/lib/core/constants/env_config.dart` directly — change the `production` case in both `baseUrl` (replace `https://api.promptgenie.app/api/v1`) and `webSocketUrl` (replace `wss://api.promptgenie.app`) — commit the change, then re-deploy.
+   >
+   > If you add `GOOGLE_MAPS_API_KEY` to Vercel and want it embedded in the web build, also add `--dart-define=GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}` to the `buildCommand` in `thepg/vercel.json`.
 
 5. Click **Deploy**.
 
@@ -1045,10 +1084,10 @@ Go to `github.com/CIRCA-RL-GHANA/Flutter-Ready` → **Settings → Secrets and v
 
 Also add these **Variables** (not secrets) under the same Actions settings page:
 
-   | Variable name | Value |
-   |---|---|
-   | `API_BASE_URL` | `https://api.promptgenie.app` |
-   | `VERCEL_URL` | `https://promptgenie.app` |
+   | Variable name | Value | Notes |
+   |---|---|---|
+   | `API_BASE_URL` | `https://api.promptgenie.app` | Passed as `--dart-define` to the Flutter build. Has no effect on the compiled app (see Step 14b note), but the CI workflow requires this variable to be set. |
+   | `VERCEL_URL` | `https://promptgenie.app` | Used by the post-deploy smoke test in CI |
 
 #### Flutter repo — Android signing secrets
 
@@ -1386,6 +1425,20 @@ Part of the database was already created. Check what has run:
 docker compose -f docker-compose.prod.yml exec app npm run migration:status
 ```
 Skip already-applied ones — the migration runner handles this automatically. If you see a genuine conflict, contact your backend developer with the full error message.
+
+### Migrations fail — "violates foreign key constraint" on `q_point_market_balances`
+Migration #13 (`CreateQPointsMarketTables`) tried to insert the AI participant's balance row before the matching `users` row existed. Return to **Step 12a** and run the AI participant INSERT, then re-run migrations:
+```bash
+# Re-run migrations — TypeORM will skip already-applied ones
+make migrate-prod
+```
+If the migration itself was partially applied and left the database in an inconsistent state, you may need to drop the affected tables manually and re-run. In the worst case, recreate the database from scratch with:
+```bash
+export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  psql -U "$DB_USERNAME" -d "$DB_NAME" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+# Then re-run Step 12a, then Step 12b
+```
 
 ### Vercel build fails — "Flutter version not found"
 The `vercel.json` in the Flutter repo pins `flutter-version: 3.22.0`. Make sure you have not changed that value. If Vercel uses an environment variable for it, ensure it matches.
