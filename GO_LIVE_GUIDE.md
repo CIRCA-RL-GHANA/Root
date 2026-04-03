@@ -15,16 +15,24 @@ This guide takes you from zero to a fully running production deployment of PROMP
 5. [Connect to Your Server](#5-connect-to-your-server)
 6. [Run the Server Setup Script](#6-run-the-server-setup-script)
 7. [Clone the Code onto the Server](#7-clone-the-code-onto-the-server)
-8. [Fill in Your Environment Variables (.env)](#8-fill-in-your-environment-variables-env)
-9. [Get an SSL Certificate (HTTPS)](#9-get-an-ssl-certificate-https)
-10. [Deploy the Backend](#10-deploy-the-backend)
-11. [Run Database Migrations](#11-run-database-migrations)
-12. [Verify the API Is Live](#12-verify-the-api-is-live)
-13. [Deploy the PWA to Vercel](#13-deploy-the-pwa-to-vercel)
-14. [Set Up Automatic Deployments (GitHub Actions)](#14-set-up-automatic-deployments-github-actions)
-15. [Set Up Automated Database Backups](#15-set-up-automated-database-backups)
-16. [Final Go-Live Checklist](#16-final-go-live-checklist)
-17. [Troubleshooting Common Problems](#17-troubleshooting-common-problems)
+8. [Set Up All Third-Party Services](#8-set-up-all-third-party-services)
+   - [8.1 Generate Cryptographic Secrets](#81-generate-cryptographic-secrets)
+   - [8.2 SendGrid — Email](#82-sendgrid--email)
+   - [8.3 Twilio — SMS](#83-twilio--sms)
+   - [8.4 Flutterwave — Payments (Recommended)](#84-flutterwave--payments-recommended)
+   - [8.5 Paystack — Payments (Alternative)](#85-paystack--payments-alternative)
+   - [8.6 OpenAI — AI Features (Optional)](#86-openai--ai-features-optional)
+   - [8.7 Google Maps — Ride Routing (Optional)](#87-google-maps--ride-routing-optional)
+9. [Write Your Complete .env File](#9-write-your-complete-env-file)
+10. [Get an SSL Certificate (HTTPS)](#10-get-an-ssl-certificate-https)
+11. [Deploy the Backend](#11-deploy-the-backend)
+12. [Run Database Migrations](#12-run-database-migrations)
+13. [Verify the API Is Live](#13-verify-the-api-is-live)
+14. [Deploy the PWA to Vercel](#14-deploy-the-pwa-to-vercel)
+15. [Set Up Automatic Deployments (GitHub Actions)](#15-set-up-automatic-deployments-github-actions)
+16. [Set Up Automated Database Backups](#16-set-up-automated-database-backups)
+17. [Final Go-Live Checklist](#17-final-go-live-checklist)
+18. [Troubleshooting Common Problems](#18-troubleshooting-common-problems)
 
 ---
 
@@ -200,141 +208,536 @@ ls
 
 ---
 
-## 8. Fill in Your Environment Variables (.env)
+## 8. Set Up All Third-Party Services
 
-The backend needs a configuration file called `.env` that contains all your secrets and settings. This file is never committed to GitHub — you create it on the server only.
+Before you write your `.env` file, you need to create accounts and collect credentials from every external service PROMPT Genie depends on. Work through each subsection below and keep the values in a temporary secure note (password manager, not a text file).
 
-### Step 8a — Copy the template
+---
+
+### 8.1 Generate Cryptographic Secrets
+
+These are values you generate yourself — no account needed. Run these commands on your **local machine**.
+
+```bash
+# JWT_SECRET — signs access tokens
+openssl rand -base64 48
+
+# JWT_REFRESH_SECRET — signs refresh tokens (MUST be a different value)
+openssl rand -base64 48
+
+# PIN_ENCRYPTION_KEY — AES-256 key for encrypting transaction PINs (exactly 32 hex chars)
+openssl rand -hex 32
+
+# DB_PASSWORD — PostgreSQL password
+openssl rand -base64 32 | tr -d '/+=' | head -c 32
+
+# REDIS_PASSWORD — Redis AUTH password
+openssl rand -base64 32 | tr -d '/+=' | head -c 32
+```
+
+Run each command separately. Copy each output into your password manager immediately. **If you lose these after deployment, your users cannot log in and all encrypted PINs become unreadable.**
+
+> **Windows users:** Open Git Bash (installed with Git for Windows) to run these commands. PowerShell does not have `openssl` by default.
+
+---
+
+### 8.2 SendGrid — Email
+
+SendGrid sends OTP verification emails, password reset emails, and transaction receipts.
+
+**Cost:** Free tier gives 100 emails/day forever — sufficient for development and early production.
+
+#### Create your account
+
+1. Go to [sendgrid.com](https://sendgrid.com) and click **Start for Free**.
+2. Sign up with your business email address.
+3. Confirm your email when the verification message arrives.
+4. Complete the brief onboarding form. For "What will you primarily use SendGrid for?" choose **Transactional**.
+
+#### Verify your sender identity
+
+You must prove you own the email address (or domain) that emails will come from. SendGrid will reject all sends if sender verification is not done.
+
+**Option A — Single sender (quickest, good enough to start):**
+
+1. In the SendGrid dashboard, go to **Settings → Sender Authentication**.
+2. Click **Verify a Single Sender**.
+3. Fill in the form:
+   - **From Name:** `PROMPT Genie`
+   - **From Email Address:** `noreply@promptgenie.com` (or whatever you want to use)
+   - **Reply To:** your personal/business email
+   - **Company Address:** your business address
+4. Click **Create**.
+5. SendGrid sends a verification email to `noreply@promptgenie.com`. Check that inbox and click the link.
+
+> If you do not control the inbox of `noreply@promptgenie.com`, use an address you do control for now (e.g. `yourname@gmail.com`). You can change it later.
+
+**Option B — Domain authentication (recommended for production):**
+
+1. Go to **Settings → Sender Authentication → Authenticate Your Domain**.
+2. Select your DNS provider (Namecheap, Cloudflare, etc.).
+3. SendGrid gives you 3 CNAME records. Add them to your domain DNS.
+4. Click **Verify**. This unlocks better email deliverability.
+
+#### Create an API key
+
+1. Go to **Settings → API Keys → Create API Key**.
+2. Name it `promptgenie-production`.
+3. Select **Restricted Access**.
+4. Under **Mail Send**, enable **Full Access**.
+5. Click **Create & View**.
+6. **Copy the key immediately** — SendGrid only shows it once. It starts with `SG.`
+
+**Your values:**
+```
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   ← the key you just copied
+EMAIL_FROM=noreply@promptgenie.com                       ← must match your verified sender
+EMAIL_FROM_NAME=PROMPT Genie
+```
+
+#### Test it (optional but recommended)
+
+In the SendGrid dashboard, go to **Email API → Integration Guide → SMTP Relay** and use the SMTP test to send a test email before deploying.
+
+---
+
+### 8.3 Twilio — SMS
+
+Twilio sends OTP verification codes via SMS when users register or log in.
+
+**Cost:** ~$0.0075–$0.05 per SMS depending on country. A trial account gives $15 credit (enough for ~300–2000 test messages). You need a paid account before going live with real users.
+
+#### Create your account
+
+1. Go to [twilio.com](https://twilio.com) and click **Sign Up**.
+2. Verify your email address and phone number.
+3. On the welcome screen, answer the setup questions:
+   - What are you building? → **SMS**
+   - What language? → **Node.js** (does not matter, just gets you to the console faster)
+
+#### Get your Account SID and Auth Token
+
+1. From the [Twilio Console homepage](https://console.twilio.com), look at the top panel.
+2. You will see:
+   - **Account SID** — starts with `AC`, e.g. `ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+   - **Auth Token** — a 32-character string (click the eye icon to reveal it)
+3. Copy both values.
+
+#### Get a phone number
+
+1. In the Twilio Console, go to **Phone Numbers → Manage → Buy a Number**.
+2. Select your country.
+3. Under **Capabilities**, make sure **SMS** is checked.
+4. Click **Search** and choose any available number.
+5. Click **Buy** (trial accounts get this for free from their credit).
+6. Your number is now shown in **Phone Numbers → Manage → Active Numbers**.
+
+> **For Ghana (GHS currency):** Twilio supports Ghana. Search with country filter **Ghana** and select a number there, or use an international number capable of sending to Ghanaian (+233) numbers.
+
+> **Trial account restriction:** Trial accounts can only send SMS to verified phone numbers. Go to **Phone Numbers → Verified Caller IDs** and add the phone numbers you want to test with. Remove this restriction by upgrading your account before going live.
+
+#### Upgrade to a paid account (before going live)
+
+1. Go to **Billing → Upgrade Account**.
+2. Add a credit card. Twilio only charges for what you use — there is no monthly fee.
+
+**Your values:**
+```
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  ← from Console homepage
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx    ← from Console homepage
+TWILIO_PHONE_NUMBER=+12025551234                      ← your purchased number in E.164 format
+```
+
+E.164 format means: `+` then country code then number, no spaces or dashes. Example: `+12025551234` for a US number, `+447911123456` for UK, `+233201234567` for Ghana.
+
+---
+
+### 8.4 Flutterwave — Payments (Recommended)
+
+Flutterwave is the recommended payment provider for PROMPT Genie, especially for African markets (Ghana, Nigeria, Kenya, etc.). It supports card payments, mobile money (MTN, Vodafone, AirtelTigo), and bank transfers.
+
+**Cost:** No monthly fee. Flutterwave charges a percentage per transaction (typically 1.4% for cards, varies by method and country). See [flutterwave.com/pricing](https://flutterwave.com/pricing).
+
+#### Create your business account
+
+1. Go to [app.flutterwave.com](https://app.flutterwave.com) and click **Create an Account**.
+2. Choose **Business Account**.
+3. Fill in your business details:
+   - Business name, email, phone, country
+   - Business type (select what applies — e-commerce, fintech, logistics, etc.)
+4. Verify your email address.
+
+#### Complete KYC verification
+
+Flutterwave requires identity verification before you can receive real money. This typically takes 1–3 business days.
+
+1. In your dashboard, go to **Settings → Business Information**.
+2. Upload the required documents:
+   - Government-issued ID (passport, national ID, driver's licence)
+   - Business registration certificate (if a registered business)
+   - Director/owner details
+3. Submit and wait for approval. You will receive an email when approved.
+
+> **Use test mode while waiting.** Flutterwave gives you test API keys immediately. You can build and test the full payment flow before KYC is approved.
+
+#### Get your API keys
+
+1. In your Flutterwave dashboard, go to **Settings → API Keys**.
+2. You will see two environments:
+
+**Test keys (use these first):**
+```
+PAYMENT_FACILITATOR_SECRET_KEY=FLWSECK_TEST-xxxxxxxxxxxxxxxxxxxx
+PAYMENT_FACILITATOR_PUBLIC_KEY=FLWPUBK_TEST-xxxxxxxxxxxxxxxxxxxx
+```
+
+**Live keys (use after KYC is approved):**
+```
+PAYMENT_FACILITATOR_SECRET_KEY=FLWSECK-xxxxxxxxxxxxxxxxxxxx
+PAYMENT_FACILITATOR_PUBLIC_KEY=FLWPUBK-xxxxxxxxxxxxxxxxxxxx
+```
+
+#### Set up your webhook
+
+Webhooks let Flutterwave notify your server when a payment is completed, even if the user closes their browser.
+
+1. In your dashboard, go to **Settings → Webhooks**.
+2. Set the webhook URL to:
+   ```
+   https://api.promptgenie.app/api/v1/payments/webhook
+   ```
+3. Under **Secret Hash**, generate a random string and copy it. This is your `PAYMENT_FACILITATOR_WEBHOOK_SECRET`.
+4. Save.
+
+#### Find your currency code
+
+| Country | Currency | Code |
+|---|---|---|
+| Ghana | Ghanaian Cedi | `GHS` |
+| Nigeria | Nigerian Naira | `NGN` |
+| Kenya | Kenyan Shilling | `KES` |
+| United States | US Dollar | `USD` |
+| United Kingdom | British Pound | `GBP` |
+
+**Your values:**
+```
+PAYMENT_FACILITATOR_PROVIDER=flutterwave
+PAYMENT_FACILITATOR_SECRET_KEY=FLWSECK-xxxxxxxxxxxxxxxxxxxx
+PAYMENT_FACILITATOR_PUBLIC_KEY=FLWPUBK-xxxxxxxxxxxxxxxxxxxx
+PAYMENT_FACILITATOR_WEBHOOK_SECRET=your-random-webhook-secret
+PAYMENT_FACILITATOR_CURRENCY=GHS
+PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+```
+
+#### Test card numbers (use in test mode only)
+
+| Card | Number | CVV | Expiry |
+|---|---|---|---|
+| Successful payment | `5531 8866 5214 2950` | `564` | `09/32` |
+| Failed payment | `5258 5874 6254 9680` | `883` | `09/31` |
+| Insufficient funds | `4187 4274 1556 4246` | `828` | `09/32` |
+
+---
+
+### 8.5 Paystack — Payments (Alternative)
+
+Use Paystack instead of Flutterwave if you are based in Nigeria and primarily serve Nigerian customers. The setup process is nearly identical.
+
+**Cost:** 1.5% per transaction (+ ₦100 for transactions above ₦2,500). No monthly fee.
+
+#### Create your account
+
+1. Go to [dashboard.paystack.com](https://dashboard.paystack.com) and sign up.
+2. Verify your email.
+3. Complete the business profile under **Settings → Business Settings**.
+4. Submit KYC documents under **Settings → Compliance**.
+
+#### Get your API keys
+
+1. Go to **Settings → API Keys & Webhooks**.
+2. Copy:
+   - **Test Secret Key** — starts with `sk_test_`
+   - **Test Public Key** — starts with `pk_test_`
+   - **Live Secret Key** — starts with `sk_live_` (available after KYC approval)
+   - **Live Public Key** — starts with `pk_live_`
+
+#### Set up your webhook
+
+1. On the same **API Keys & Webhooks** page, under **Webhook URL**, enter:
+   ```
+   https://api.promptgenie.app/api/v1/payments/webhook
+   ```
+2. Save. Paystack does not use a separate webhook secret — it uses your secret key to sign events (the app handles this automatically).
+
+**Your values:**
+```
+PAYMENT_FACILITATOR_PROVIDER=paystack
+PAYMENT_FACILITATOR_SECRET_KEY=sk_live_xxxxxxxxxxxxxxxxxxxx
+PAYMENT_FACILITATOR_PUBLIC_KEY=pk_live_xxxxxxxxxxxxxxxxxxxx
+PAYMENT_FACILITATOR_WEBHOOK_SECRET=                    ← leave blank for Paystack
+PAYMENT_FACILITATOR_CURRENCY=NGN
+PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+```
+
+---
+
+### 8.6 OpenAI — AI Features (Optional)
+
+OpenAI powers the natural language AI features: sentiment analysis, intent detection, conversation summaries, financial insights, and the AI assistant. The app runs without it — AI features fall back gracefully — but live use requires an API key.
+
+**Cost:** Pay-per-use. `gpt-4o-mini` (the default model) costs approximately $0.15 per 1 million input tokens. For a typical user session, this is fractions of a cent.
+
+#### Create your account
+
+1. Go to [platform.openai.com](https://platform.openai.com) and sign up.
+2. Verify your email and phone number.
+3. You get $5 in free credits on sign-up (enough for extensive testing).
+
+#### Add billing (required for production)
+
+1. Go to **Settings → Billing → Add payment method**.
+2. Add a credit card.
+3. Set a **monthly spending limit** under **Billing → Limits**. Start with $20–$50 to prevent surprise bills while you test.
+
+#### Create an API key
+
+1. Go to **API Keys** in the left sidebar (or [platform.openai.com/api-keys](https://platform.openai.com/api-keys)).
+2. Click **Create new secret key**.
+3. Name it `promptgenie-production`.
+4. Click **Create secret key**.
+5. **Copy the key immediately** — it starts with `sk-` and is shown only once.
+
+#### Choose your model
+
+The default `gpt-4o-mini` is the right choice for production — it is fast, cheap, and capable enough for all PROMPT Genie features. Do not change `AI_MODEL` unless you have a specific reason.
+
+**Your values:**
+```
+AI_ENABLED=true
+TENSORFLOW_ENABLED=false
+AI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+AI_BASE_URL=https://api.openai.com/v1
+AI_MODEL=gpt-4o-mini
+AI_MAX_TOKENS=2048
+AI_TEMPERATURE=0.7
+AI_TOP_P=0.9
+AI_REQUEST_TIMEOUT=30000
+```
+
+> **If you do not want to use OpenAI yet,** set `AI_API_KEY=` (blank). The app will still work — sentiment analysis, intent detection, and the AI assistant will return empty/default responses instead of erroring.
+
+---
+
+### 8.7 Google Maps — Ride Routing (Optional)
+
+Google Maps is used to calculate ride routes, distances, estimated times, and to geocode addresses. Without it, the ride module still works but cannot show turn-by-turn routing or accurate fares.
+
+**Cost:** $200 free monthly credit (covers ~40,000 map loads or ~100,000 geocoding requests per month). Most early-stage apps stay within the free tier.
+
+#### Create a Google Cloud account
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and sign in with a Google account.
+2. Accept the terms of service.
+3. Add a billing account under **Billing** (required even for free tier — Google needs a card on file).
+
+#### Create a project
+
+1. Click the project dropdown at the top and select **New Project**.
+2. Name it `promptgenie`.
+3. Click **Create**.
+
+#### Enable the required APIs
+
+1. Go to **APIs & Services → Library**.
+2. Search for and enable each of the following one by one:
+   - **Maps JavaScript API**
+   - **Geocoding API**
+   - **Directions API**
+   - **Distance Matrix API**
+   - **Places API**
+
+#### Create an API key
+
+1. Go to **APIs & Services → Credentials → Create Credentials → API Key**.
+2. Copy the key shown.
+3. Click **Restrict Key** (important for security):
+   - Under **Application restrictions**, select **IP addresses** and add your server IP.
+   - Under **API restrictions**, select **Restrict key** and check only the 5 APIs you enabled above.
+4. Save.
+
+**Your value:**
+```
+GOOGLE_MAPS_API_KEY=AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+> **If you are not launching the ride feature immediately,** leave `GOOGLE_MAPS_API_KEY=` blank and add it later. The app will not crash without it.
+
+---
+
+## 9. Write Your Complete .env File
+
+You now have all the values you need. Create the `.env` file on the server.
+
+### Step 9a — Copy the template
 
 ```bash
 cd /opt/promptgenie
 cp orionstack-backend--main/.env.example orionstack-backend--main/.env
 ```
 
-### Step 8b — Open the file for editing
+### Step 9b — Open for editing
 
 ```bash
 nano orionstack-backend--main/.env
 ```
 
-> `nano` is a simple text editor. Use arrow keys to move. `Ctrl+O` saves. `Ctrl+X` exits.
+`nano` is a simple text editor. Arrow keys to navigate. `Ctrl+O` to save. `Ctrl+X` to exit.
 
-### Step 8c — Generate your secrets
+### Step 9c — Replace every CHANGE_ME with your real values
 
-Open a second terminal on your **local machine** and run these commands to generate strong random values. Copy each output and paste it into the `.env` file.
-
-```bash
-# Generate JWT_SECRET (run this once)
-openssl rand -base64 48
-
-# Generate JWT_REFRESH_SECRET (run again — must be a DIFFERENT value)
-openssl rand -base64 48
-
-# Generate PIN_ENCRYPTION_KEY (exactly 32 hex characters)
-openssl rand -hex 32
-
-# Generate DB_PASSWORD
-openssl rand -base64 32 | tr -d '/+=' | head -c 32
-
-# Generate REDIS_PASSWORD
-openssl rand -base64 32 | tr -d '/+=' | head -c 32
-```
-
-### Step 8d — Fill in each value
-
-Here is every value you need to change. Lines starting with `#` are comments — leave them as-is.
+Use the values you collected in Step 8. Here is the complete file with annotations:
 
 ```env
+# ── Application ───────────────────────────────────────────────────────────────
 NODE_ENV=production
 PORT=3000
 API_PREFIX=api
 API_VERSION=v1
 
-# ── Database ──────────────────────────────────────────────────────────────────
+# ── Database ───────────────────────────────────────────────────────────────────
+# DB_HOST must be "postgres" (the Docker container name) — do not change this
 DB_HOST=postgres
 DB_PORT=5432
 DB_USERNAME=postgres
-DB_PASSWORD=<paste DB_PASSWORD from Step 8c>
+DB_PASSWORD=<paste DB_PASSWORD from Section 8.1>
 DB_NAME=promptgenie_prod
+# NEVER set DB_SYNCHRONIZE=true in production — it will drop and recreate tables
 DB_SYNCHRONIZE=false
 DB_LOGGING=false
 DB_SSL=false
 
-# ── JWT ───────────────────────────────────────────────────────────────────────
-JWT_SECRET=<paste JWT_SECRET from Step 8c>
+# ── JWT Authentication ─────────────────────────────────────────────────────────
+JWT_SECRET=<paste JWT_SECRET from Section 8.1>
 JWT_EXPIRES_IN=7d
-JWT_REFRESH_SECRET=<paste JWT_REFRESH_SECRET from Step 8c — DIFFERENT value>
+# JWT_REFRESH_SECRET must be a DIFFERENT value from JWT_SECRET
+JWT_REFRESH_SECRET=<paste JWT_REFRESH_SECRET from Section 8.1>
 JWT_REFRESH_EXPIRES_IN=30d
 
-# ── Security ──────────────────────────────────────────────────────────────────
+# ── Security ───────────────────────────────────────────────────────────────────
 BCRYPT_ROUNDS=12
 OTP_EXPIRY_MINUTES=5
-PIN_ENCRYPTION_KEY=<paste PIN_ENCRYPTION_KEY from Step 8c>
+PIN_ENCRYPTION_KEY=<paste PIN_ENCRYPTION_KEY from Section 8.1>
 
-# ── Redis ─────────────────────────────────────────────────────────────────────
+# ── Redis ──────────────────────────────────────────────────────────────────────
+# REDIS_HOST must be "redis" (the Docker container name) — do not change this
 REDIS_HOST=redis
 REDIS_PORT=6379
-REDIS_PASSWORD=<paste REDIS_PASSWORD from Step 8c>
+REDIS_PASSWORD=<paste REDIS_PASSWORD from Section 8.1>
 REDIS_DB=0
 
-# ── Email (SendGrid) ──────────────────────────────────────────────────────────
-# Get this from: sendgrid.com → Settings → API Keys → Create API Key
-SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-EMAIL_FROM=noreply@promptgenie.com   # must be a verified address in your SendGrid account
+# ── Email (SendGrid) — see Section 8.2 for setup ──────────────────────────────
+SENDGRID_API_KEY=<paste SG.xxxx key from Section 8.2>
+EMAIL_FROM=<paste verified sender email from Section 8.2>
 EMAIL_FROM_NAME=PROMPT Genie
 
-# ── SMS (Twilio) ──────────────────────────────────────────────────────────────
-# Get these from: console.twilio.com → Account Info (top left panel)
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-# Your Twilio phone number in +E.164 format, e.g. +14155552671
-TWILIO_PHONE_NUMBER=+1XXXXXXXXXX
+# ── SMS (Twilio) — see Section 8.3 for setup ──────────────────────────────────
+TWILIO_ACCOUNT_SID=<paste AC... value from Section 8.3>
+TWILIO_AUTH_TOKEN=<paste auth token from Section 8.3>
+TWILIO_PHONE_NUMBER=<paste +E.164 number from Section 8.3>
 
-# ── CORS ──────────────────────────────────────────────────────────────────────
+# ── File Uploads ───────────────────────────────────────────────────────────────
+MAX_FILE_SIZE=10485760
+UPLOAD_DESTINATION=./uploads
+
+# ── Rate Limiting ──────────────────────────────────────────────────────────────
+THROTTLE_TTL=60
+THROTTLE_LIMIT=100
+
+# ── CORS ───────────────────────────────────────────────────────────────────────
+# Must exactly match your PWA domain — no trailing slash
 CORS_ORIGIN=https://promptgenie.app
 CORS_CREDENTIALS=true
 
-# ── Payments ──────────────────────────────────────────────────────────────────
-# Change to flutterwave or paystack when you have live keys
-PAYMENT_FACILITATOR_PROVIDER=mock
-PAYMENT_FACILITATOR_SECRET_KEY=mock_key
-PAYMENT_FACILITATOR_CURRENCY=GHS
-PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+# ── Logging ────────────────────────────────────────────────────────────────────
+LOG_LEVEL=info
+LOG_FILE_PATH=./logs
 
-# ── AI (optional — works without this) ───────────────────────────────────────
+# ── AI Services — see Section 8.6 for setup ───────────────────────────────────
 AI_ENABLED=true
 TENSORFLOW_ENABLED=false
-AI_API_KEY=                     # leave blank if you are not using OpenAI
+# Leave blank if you are not using OpenAI — the app works without it
+AI_API_KEY=<paste sk-... key from Section 8.6, or leave blank>
+AI_BASE_URL=https://api.openai.com/v1
 AI_MODEL=gpt-4o-mini
+AI_MAX_TOKENS=2048
+AI_TEMPERATURE=0.7
+AI_TOP_P=0.9
+AI_REQUEST_TIMEOUT=30000
 AI_FRAUD_BLOCK_THRESHOLD=0.85
 AI_FRAUD_REVIEW_THRESHOLD=0.55
 AI_SURGE_MAX_MULTIPLIER=3.5
 AI_PLATFORM_FEE_PCT=8
-AI_MARKET_ENABLED=false        # leave false until fully tested
+ML_MODEL_PATH=./ml-models
+FEATURE_STORE_UPDATE_INTERVAL=300000
 
-# ── Logging ───────────────────────────────────────────────────────────────────
-LOG_LEVEL=info
-LOG_FILE_PATH=./logs
+# ── Google Maps — see Section 8.7 for setup ───────────────────────────────────
+# Leave blank to disable ride routing — rides still work without it
+GOOGLE_MAPS_API_KEY=<paste AIza... key from Section 8.7, or leave blank>
 
-# ── Rate Limiting ─────────────────────────────────────────────────────────────
-THROTTLE_TTL=60
-THROTTLE_LIMIT=100
+# ── Monitoring ─────────────────────────────────────────────────────────────────
+HEALTH_CHECK_TIMEOUT=30000
+METRICS_ENABLED=true
+
+# ── Payment Facilitator — see Sections 8.4 / 8.5 for setup ───────────────────
+# Use "mock" to test without real payments. Use "flutterwave" or "paystack" for live.
+PAYMENT_FACILITATOR_PROVIDER=<flutterwave or paystack or mock>
+PAYMENT_FACILITATOR_SECRET_KEY=<paste secret key from Section 8.4 or 8.5>
+PAYMENT_FACILITATOR_PUBLIC_KEY=<paste public key from Section 8.4 or 8.5>
+PAYMENT_FACILITATOR_WEBHOOK_SECRET=<paste webhook secret from Section 8.4>
+PAYMENT_FACILITATOR_CURRENCY=<GHS, NGN, KES, or USD>
+PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+
+# ── Q Points AI Market Maker ───────────────────────────────────────────────────
+# Leave AI_MARKET_ENABLED=false until fully tested
+AI_MARKET_ENABLED=false
+AI_PARTICIPANT_USER_ID=00000000-0000-0000-0000-000000000001
+AI_TARGET_INVENTORY=250000000000000
+AI_MIN_INVENTORY=50000000000000
+AI_MAX_INVENTORY=490000000000000
+AI_TARGET_SPREAD_PCT=2.0
+AI_ORDER_BASE_QTY=500
+AI_MAX_ORDER_QTY=2500
+AI_MAX_OPEN_ORDERS=10
+AI_ORDER_TTL_SECONDS=300
+AI_RUN_INTERVAL_SECONDS=30
+AI_MIN_CASH_RESERVE_USD=5000
 ```
 
 Save the file: `Ctrl+O` → Enter → `Ctrl+X`
 
-### Step 8e — Validate your .env
+### Step 9d — Validate your .env
 
 ```bash
 cd /opt/promptgenie
 ./scripts/validate-env.sh --strict
 ```
 
-You should see all green checkmarks. Fix any errors it reports before continuing.
+You should see all green checkmarks. The validator checks that all required variables are set and that none still contain placeholder values like `CHANGE_ME`.
+
+**Common validation failures and fixes:**
+
+| Error | Cause | Fix |
+|---|---|---|
+| `JWT_SECRET is required` | Variable is missing or empty | Paste the generated value |
+| `JWT_SECRET and JWT_REFRESH_SECRET must be different` | You used the same value for both | Regenerate one of them with `openssl rand -base64 48` |
+| `PIN_ENCRYPTION_KEY must be 32 hex characters` | Wrong length or wrong format | Run `openssl rand -hex 32` and paste the exact output |
+| `SENDGRID_API_KEY must start with SG.` | Wrong key or not copied fully | Re-copy from SendGrid dashboard |
+| `EMAIL_FROM must be a valid email` | Typo in the email address | Fix the address |
+| `DB_SYNCHRONIZE must be false in production` | Set to `true` | Change to `false` |
 
 ---
 
-## 9. Get an SSL Certificate (HTTPS)
+## 10. Get an SSL Certificate (HTTPS)
 
 This gives your API the padlock (HTTPS). It is free via Let's Encrypt.
 
@@ -357,7 +760,7 @@ ls /etc/letsencrypt/live/api.promptgenie.app/
 
 ---
 
-## 10. Deploy the Backend
+## 11. Deploy the Backend
 
 One command builds the Docker image, starts all five services (NestJS app, PostgreSQL, Redis, Nginx, Certbot), and waits for a health check.
 
@@ -399,7 +802,7 @@ promptgenie-certbot    Up
 
 ---
 
-## 11. Run Database Migrations
+## 12. Run Database Migrations
 
 Migrations create all the database tables that the app needs. This only needs to be done once on first deployment (and again when new migrations are added in future updates).
 
@@ -419,7 +822,7 @@ Every migration should show `[X]` (applied). None should show `[ ]` (pending).
 
 ---
 
-## 12. Verify the API Is Live
+## 13. Verify the API Is Live
 
 Run these from your **local machine** (or any browser):
 
@@ -453,7 +856,7 @@ Expected: `HTTP 401 Unauthorized` — this is correct. It means the endpoint exi
 
 ---
 
-## 13. Deploy the PWA to Vercel
+## 14. Deploy the PWA to Vercel
 
 The Flutter web app (PWA) is deployed separately to Vercel's global CDN.
 
@@ -492,7 +895,7 @@ The first deploy takes about 4 minutes to build the Flutter web app.
 
 ---
 
-## 14. Set Up Automatic Deployments (GitHub Actions)
+## 15. Set Up Automatic Deployments (GitHub Actions)
 
 Every time you push code to the `main` branch, GitHub will automatically deploy to your server. You need to add SSH credentials as GitHub Secrets.
 
@@ -564,7 +967,7 @@ Go to `github.com/CIRCA-RL-GHANA/Root` → **Actions** tab. You should see a wor
 
 ---
 
-## 15. Set Up Automated Database Backups
+## 16. Set Up Automated Database Backups
 
 Run this once on the server to create daily automatic database backups.
 
@@ -600,7 +1003,7 @@ ls -lh /backups/test_backup.sql
 
 ---
 
-## 16. Final Go-Live Checklist
+## 17. Final Go-Live Checklist
 
 Run through every item before announcing the app is live.
 
@@ -646,7 +1049,7 @@ BACKUPS
 
 ---
 
-## 17. Troubleshooting Common Problems
+## 18. Troubleshooting Common Problems
 
 ### "Permission denied" when running SSH
 Your SSH key is not authorized. Re-run Step 14b. Make sure you are using the correct username (`promptgenie`, not `root`).
