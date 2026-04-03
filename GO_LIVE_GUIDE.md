@@ -1029,7 +1029,8 @@ The Android CI build signs the app with your release keystore. You must create t
 
 **On your local machine, generate the keystore:**
 ```bash
-# Run in Git Bash / Terminal (requires Java JDK — install from adoptium.net if not present)
+# Run in Git Bash / Terminal (requires Java 17 JDK — install from adoptium.net if not present)
+# Flutter 3.22 requires Java 17 or higher; earlier versions will produce a build error.
 keytool -genkey -v \
   -keystore promptgenie-release.jks \
   -keyalg RSA \
@@ -1114,6 +1115,12 @@ iOS signing requires an Apple Developer account ($99/year) and a valid distribut
    | `APPSTORE_API_KEY_ID` | Key ID from App Store Connect |
    | `APPSTORE_API_PRIVATE_KEY` | Raw contents of the `.p8` file (open in a text editor and paste) |
 
+> **Important — TestFlight, not direct App Store:** The CI pipeline uploads the iOS build to **TestFlight**, not directly to the App Store production listing. After a successful CI run:
+> 1. Open [App Store Connect](https://appstoreconnect.apple.com) → your app → **TestFlight**.
+> 2. Wait for the build to finish processing (usually 5–15 minutes).
+> 3. To publish to the App Store: go to **App Store → + Version**, select the TestFlight build, fill in release notes, and submit for Apple review.
+> Apple review typically takes 1–2 days on first submission.
+
 #### Flutter repo — Google Play secrets
 
 Required to automatically publish Android builds to the Play Store. **Skip if not publishing to Google Play yet.**
@@ -1139,6 +1146,12 @@ Required to automatically publish Android builds to the Play Store. **Skip if no
    | Secret name | Value |
    |---|---|
    | `GOOGLE_PLAY_SERVICE_ACCOUNT` | Entire contents of the JSON file you downloaded |
+
+> **Important — Play Store release track:** The CI pipeline uploads to the **internal testing track**, not directly to production. After the first CI run deposits a build in Play Console, you need to manually promote it:
+> 1. Open [Play Console](https://play.google.com/console) → your app → **Testing → Internal testing**.
+> 2. Verify the build looks correct and passes the pre-launch report.
+> 3. Go to **Production → Releases → Create new release**, select the AAB from Internal testing, and submit it for review.
+> Subsequent CI builds go to Internal testing automatically; you control promotion to Production.
 
 ### Step 15d — Test it
 
