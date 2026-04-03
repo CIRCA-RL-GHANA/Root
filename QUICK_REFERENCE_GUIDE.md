@@ -90,10 +90,28 @@ docker compose down             # Stop dev stack
 ## Database / Migrations
 
 ```bash
-npm run migration:status        # List all migrations (applied / pending)
-npm run migration:run           # Apply all pending migrations
+npm run migration:run           # Apply all pending migrations (local dev only — runs from TypeScript)
 npm run migration:revert        # Revert the last applied migration
 npm run migration:generate -- src/database/migrations/<Name>  # Generate from entities
+```
+
+**Production migration commands (run on the VPS):**
+```bash
+make migrate-prod               # Run migrations inside the production container (compiled JS)
+
+# Check which migrations have been applied:
+export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  psql -U "$DB_USERNAME" -d "$DB_NAME" \
+  -c "SELECT name FROM migrations ORDER BY id;"
+```
+
+> `npm run migration:run` uses `ts-node` (dev dependency) and only works locally. The production Docker image contains compiled output only — use `make migrate-prod` instead.
+
+**Initial seed (optional — creates admin user + sample data):**
+```bash
+# Run from inside the backend directory with .env variables in scope (local/staging only)
+cd orionstack-backend--main && npm run seed
 ```
 
 ### Migration Order (25 total)
@@ -424,6 +442,7 @@ const socket = io('wss://api.promptgenie.app/chat', {
 [ ] DB_SYNCHRONIZE=false
 [ ] docker compose -f docker-compose.prod.yml pull
 [ ] make deploy
+[ ] AI participant user pre-seeded (see GO_LIVE_GUIDE Step 12a — MUST run before migrations)
 [ ] Migrations applied (make migrate-prod)
 [ ] Health check passing (curl https://api.promptgenie.app/api/v1/health)
 [ ] Smoke test: expected 401 → curl https://api.promptgenie.app/api/v1/auth/me

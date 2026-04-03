@@ -916,10 +916,15 @@ This runs 25 migrations in order **inside the running Docker container** (the se
 
 **Verify all migrations ran:**
 ```bash
-docker compose -f docker-compose.prod.yml exec app npm run migration:status
+export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  psql -U "$DB_USERNAME" -d "$DB_NAME" \
+  -c "SELECT name FROM migrations ORDER BY id;"
 ```
 
-Every migration should show `[X]` (applied). None should show `[ ]` (pending).
+The query should return 25 rows — one for each migration name. If a migration is missing, re-run `make migrate-prod`.
+
+> **Note — CI does not run migrations reliably:** The GitHub Actions backend workflow also attempts `npm run migration:run` on each push, but this command requires `ts-node` which is excluded from the production Docker image, so it silently fails. **Always run `make migrate-prod` manually on the server whenever a deployment includes new migration files.**
 
 ---
 
@@ -1221,6 +1226,8 @@ Required to automatically publish Android builds to the Play Store. **Skip if no
 
 ### Step 15d — Test it
 
+> **Pre-requisite:** Make sure you have completed **Step 12a** (AI participant pre-seed) and **Step 12b** (`make migrate-prod`) before triggering CI. The backend CI workflow attempts `npm run migration:run` on each push, but this command requires `ts-node` which is not present in the production Docker image — so the CI migration step **silently fails**. This is not harmful once migrations have been applied manually (TypeORM is idempotent), but it means you should never rely on CI to apply migrations. **Always run `make migrate-prod` manually on the server when a deployment includes new migration files**.
+
 Push any small change (e.g. add a blank line to `README.md`) to the `main` branch:
 
 ```bash
@@ -1336,7 +1343,7 @@ BACKEND API
 [ ] GET /api/v1/health returns HTTP 200 with status "ok"
 [ ] GET /api/v1/health shows database: "up"
 [ ] GET /api/v1/auth/me returns HTTP 401 (not 502)
-[ ] All 25 migrations show [X] in migration:status
+[ ] All 25 migrations present (psql query: SELECT name FROM migrations ORDER BY id; — should return 25 rows)
 
 PWA
 [ ] https://promptgenie.app loads the app
@@ -1420,11 +1427,14 @@ make ssl DOMAIN=api.promptgenie.app EMAIL=your@email.com
 ```
 
 ### Migrations fail — "relation already exists"
-Part of the database was already created. Check what has run:
+Part of the database was already created. Check which migrations have been applied:
 ```bash
-docker compose -f docker-compose.prod.yml exec app npm run migration:status
+export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  psql -U "$DB_USERNAME" -d "$DB_NAME" \
+  -c "SELECT name FROM migrations ORDER BY id;"
 ```
-Skip already-applied ones — the migration runner handles this automatically. If you see a genuine conflict, contact your backend developer with the full error message.
+Already-applied migrations are tracked in the `migrations` table and TypeORM will skip them automatically on re-run. If you see a genuine conflict that TypeORM cannot resolve, contact your backend developer with the full error message.
 
 ### Migrations fail — "violates foreign key constraint" on `q_point_market_balances`
 Migration #13 (`CreateQPointsMarketTables`) tried to insert the AI participant's balance row before the matching `users` row existed. Return to **Step 12a** and run the AI participant INSERT, then re-run migrations:
