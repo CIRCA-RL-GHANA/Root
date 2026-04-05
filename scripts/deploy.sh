@@ -90,19 +90,18 @@ deploy() {
   docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
 
   # Wait for health checks
-  log_info "Waiting for services to be healthy..."
+  log_info "Waiting for services to be healthy (max 120s)..."
   local retries=0
-  local max_retries=30
+  local max_retries=24
   while [ $retries -lt $max_retries ]; do
-    if docker compose -f "$COMPOSE_FILE" ps | grep -q "unhealthy"; then
-      retries=$((retries + 1))
-      sleep 2
-    else
+    sleep 5
+    retries=$((retries + 1))
+    if ! docker compose -f "$COMPOSE_FILE" ps | grep -qE '(starting|unhealthy)'; then
       break
     fi
   done
 
-  if [ $retries -eq $max_retries ]; then
+  if docker compose -f "$COMPOSE_FILE" ps | grep -q 'unhealthy'; then
     log_error "Services did not become healthy within timeout"
     docker compose -f "$COMPOSE_FILE" logs --tail=50 app
     exit 1
@@ -115,8 +114,11 @@ deploy() {
 healthcheck() {
   log_info "Running health checks..."
 
+  # Source .env so REDIS_PASSWORD / DB_USERNAME are available when called standalone
+  [[ -f "$ROOT_DIR/.env" ]] && source "$ROOT_DIR/.env"
+
   local app_health
-  app_health=$(docker exec promptgenie-app wget -qO- http://localhost:3000/api/v1/health 2>/dev/null || echo "FAIL")
+  app_health=$(docker exec promptgenie-app wget -qO- http://localhost:3000/api/v1/health/live 2>/dev/null || echo "FAIL")
 
   if echo "$app_health" | grep -q '"status":"ok"'; then
     log_ok "Backend health check: PASSED"
@@ -128,7 +130,7 @@ healthcheck() {
 
   # Check database connectivity
   local db_check
-  db_check=$(docker exec promptgenie-postgres pg_isready -U postgres 2>/dev/null || echo "FAIL")
+  db_check=$(docker exec promptgenie-postgres pg_isready -U "${DB_USERNAME:-postgres}" 2>/dev/null || echo "FAIL")
   if echo "$db_check" | grep -q "accepting connections"; then
     log_ok "Database health check: PASSED"
   else
@@ -138,7 +140,7 @@ healthcheck() {
 
   # Check Redis
   local redis_check
-  redis_check=$(docker exec promptgenie-redis redis-cli ping 2>/dev/null || echo "FAIL")
+  redis_check=$(docker exec promptgenie-redis redis-cli ${REDIS_PASSWORD:+-a "$REDIS_PASSWORD"} ping 2>/dev/null || echo "FAIL")
   if [ "$redis_check" = "PONG" ]; then
     log_ok "Redis health check: PASSED"
   else

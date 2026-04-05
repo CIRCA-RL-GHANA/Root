@@ -27,7 +27,6 @@ docker compose -f "$ROOT_DIR/docker-compose.prod.yml" run --rm certbot \
   certbot certonly --webroot \
   -w /var/www/certbot \
   -d "$DOMAIN" \
-  -d "www.$DOMAIN" \
   --email "$EMAIL" \
   --agree-tos \
   --no-eff-email \

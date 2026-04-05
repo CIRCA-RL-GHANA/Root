@@ -2,7 +2,7 @@
 # ============================================================
 # VPS Initial Setup — Hostinger Ubuntu 22.04
 # Run once as root immediately after provisioning.
-# Usage: bash scripts/vps-init.sh [--domain api.promptgenie.app] [--email admin@promptgenie.app]
+# Usage: bash scripts/vps-init.sh [--domain api.genieinprompt.app] [--email admin@genieinprompt.app]
 # Recovery (locked out): bash scripts/vps-init.sh --recover --pubkey 'ssh-ed25519 AAAA...'
 # ============================================================
 set -euo pipefail
