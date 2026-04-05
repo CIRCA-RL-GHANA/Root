@@ -62,7 +62,7 @@ if [[ "$RECOVER_MODE" == "true" ]]; then
 fi
 
 if [[ -z "$DOMAIN" || -z "$EMAIL" ]]; then
-  read -rp "API domain (e.g. api.promptgenie.app): " DOMAIN || true
+  read -rp "API domain (e.g. api.genieinprompt.app): " DOMAIN || true
   read -rp "SSL/Let's Encrypt contact email:        " EMAIL || true
 fi
 
