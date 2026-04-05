@@ -76,7 +76,7 @@ services:
         --appendonly yes
         --maxmemory 256mb
         --maxmemory-policy allkeys-lru
-        --requirepass ${REDIS_PASSWORD:-}
+        --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     ports:
       - '127.0.0.1:${REDIS_PORT:-6379}:6379'
     volumes:
@@ -84,7 +84,7 @@ services:
     networks:
       - promptgenie-network
     healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-}', 'ping']
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
