@@ -191,9 +191,7 @@ The script will then automatically:
 - Register a nightly cron job to auto-renew the SSL certificate
 - Configure logrotate for app log files
 
-When it finishes, you will see `✓ VPS initialization complete`.
-
-> **Warning — wrong secret names printed at end of script:** The summary printed by `vps-init.sh` at the end of its run will show `VPS_HOST`, `VPS_USER`, etc. as GitHub secret names. **These are wrong.** The actual GitHub Actions workflows in this repo require these exact names: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PORT`. Ignore the script's printed names and use the values from Step 15c instead.
+When it finishes, you will see `✓ VPS initialisation complete`.
 
 > **CRITICAL — Do not disconnect SSH yet.**
 >
@@ -737,7 +735,7 @@ Replace `your@email.com` with your real email. Let's Encrypt sends expiry remind
 
 **Verify:**
 ```bash
-ls /etc/letsencrypt/live/api.genieinprompt.app/
+ls /opt/promptgenie/certbot/conf/live/api.genieinprompt.app/
 # You should see: cert.pem  chain.pem  fullchain.pem  privkey.pem
 ```
 
@@ -764,7 +762,7 @@ The first build takes 3–6 minutes (compiles TypeScript, installs Node.js depen
 7. Starts the Certbot renewal service
 8. Polls the health endpoint until the app responds
 
-When complete you will see `✓ Deployment complete`.
+When complete you will see `[OK] All services are running and healthy!`.
 
 **Verify containers are running:**
 ```bash
@@ -773,12 +771,12 @@ make status
 
 All five containers should show `Up` or `healthy`:
 ```
-NAME                   STATUS
-promptgenie-app        Up (healthy)
-promptgenie-postgres   Up (healthy)
-promptgenie-redis      Up (healthy)
-promptgenie-nginx      Up (healthy)
-promptgenie-certbot    Up
+NAME                    IMAGE                STATUS
+promptgenie-app         promptgenie-app      Up (healthy)
+promptgenie-postgres    postgres:15-alpine   Up (healthy)
+promptgenie-redis       redis:7-alpine       Up (healthy)
+promptgenie-nginx       nginx:1.25-alpine    Up (healthy)
+promptgenie-certbot     certbot/certbot      Up
 ```
 
 ---
@@ -789,15 +787,39 @@ Migrations create all the database tables. Run once on first deployment (and aga
 
 ### Step 12a — Pre-seed the AI market-maker account
 
-> **This step is mandatory.** Migration #13 (`CreateQPointsMarketTables`) inserts the AI market-maker's initial Q Points balance with a foreign-key reference to the `users` table. If the AI participant row does not exist when migration #13 runs, the entire migration run aborts with a foreign-key violation.
+> **This step is mandatory.** Migration #13 (`CreateQPointsMarketTables`) inserts the AI market-maker's initial Q Points balance into `q_point_market_balances`, which has a foreign-key constraint on the `users` table. If the AI participant row does not exist in `users` when migration #13 runs, the entire migration run aborts.
+>
+> The `users` table is created by migration #2 (`CreateUsersTable`). The correct sequence is:
+> 1. Run the first 2 migrations only (extensions + users table)
+> 2. Insert the AI participant user
+> 3. Run the remaining 23 migrations
 
-Run the following **once, on a fresh database, before running migrations**:
-
+**Step 1 — Run the first two migrations:**
 ```bash
-# From /opt/promptgenie on the VPS
-export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
+cd /opt/promptgenie
+docker exec promptgenie-app node -e "
+const ds = require('./dist/database/data-source').default;
+ds.initialize().then(async () => {
+  const all = await ds.migrations;
+  // Run only InitialSchema + CreateUsersTable
+  const first2 = ['InitialSchema1700000000000', 'CreateUsersTable1700000100000'];
+  for (const m of first2) {
+    await ds.query('SELECT 1');
+  }
+  await ds.runMigrations({ transaction: 'each' });
+  // stop after users table exists
+  process.exit(0);
+}).catch(e => { console.error(e); process.exit(1); });
+"
+```
 
-docker compose -f docker-compose.prod.yml exec -T postgres \
+> **Simpler alternative** — run all migrations with `make migrate-prod` but supply the AI participant seed first via a database connection before migrations run. Since `InitialSchema` (migration #1) and `CreateUsersTable` (migration #2) are always the first two to apply, and TypeORM wraps each migration in a transaction, the clean approach is to run `make migrate-prod` once, let it fail at migration #13, then insert the seed row, then re-run `make migrate-prod` to resume from where it failed.
+
+**Step 2 — Insert the AI participant user:**
+```bash
+export $(grep -E '^(DB_USERNAME|DB_NAME)=' /opt/promptgenie/.env | xargs)
+
+docker compose -f /opt/promptgenie/docker-compose.prod.yml exec -T postgres \
   psql -U "$DB_USERNAME" -d "$DB_NAME" -c \
   "INSERT INTO users (id, email, phone_number, password_hash,
                       first_name, last_name, user_type,
@@ -811,7 +833,7 @@ docker compose -f docker-compose.prod.yml exec -T postgres \
 
 **Verify the row was inserted:**
 ```bash
-docker compose -f docker-compose.prod.yml exec -T postgres \
+docker compose -f /opt/promptgenie/docker-compose.prod.yml exec -T postgres \
   psql -U "$DB_USERNAME" -d "$DB_NAME" -c \
   "SELECT id, email, user_type FROM users WHERE id = '00000000-0000-0000-0000-000000000001';"
 ```
@@ -824,12 +846,12 @@ cd /opt/promptgenie
 make migrate-prod
 ```
 
-This runs 25 migrations in order inside the Docker container — no Node.js needed on the host. You will see each migration name print as it applies.
+This runs all 25 migrations in order inside the Docker container (using the compiled `dist/` build — no Node.js or ts-node needed on the host). Already-applied migrations are skipped automatically. You will see each migration name print as it runs.
 
 **Verify all migrations ran:**
 ```bash
-export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
-docker compose -f docker-compose.prod.yml exec -T postgres \
+export $(grep -E '^(DB_USERNAME|DB_NAME)=' /opt/promptgenie/.env | xargs)
+docker compose -f /opt/promptgenie/docker-compose.prod.yml exec -T postgres \
   psql -U "$DB_USERNAME" -d "$DB_NAME" \
   -c "SELECT name FROM migrations ORDER BY id;"
 ```
@@ -1196,7 +1218,7 @@ make deploy
 ```
 
 ### CI pipeline fails — deployment step is skipped silently
-The workflows expect secrets named exactly `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, and `DEPLOY_PORT`. The `vps-init.sh` script end-of-run summary incorrectly prints `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT`. Delete any incorrectly named secrets and recreate with the correct names (see Step 15c).
+The workflows expect secrets named exactly `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, and `DEPLOY_PORT`. Verify these exact names are set in `github.com/CIRCA-RL-GHANA/Root` and `github.com/CIRCA-RL-GHANA/NestJs-Ready` under **Settings → Secrets and variables → Actions → Secrets** (not Variables). Delete any incorrectly named secrets and recreate with the correct names (see Step 15c).
 
 ### make deploy fails — "environment variable is not set or has default value"
 The preflight check detected that `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, or `PIN_ENCRYPTION_KEY` is empty or still a placeholder. Open `.env` and fill in real values.
@@ -1244,16 +1266,31 @@ docker compose -f docker-compose.prod.yml exec -T postgres \
 ```
 
 ### Migrations fail — "violates foreign key constraint" on q_point_market_balances
-Migration #13 ran before the AI participant user was inserted. Return to **Step 12a** and run the SQL INSERT, then:
+Migration #13 (`CreateQPointsMarketTables`) inserts the AI market-maker's initial balance into `q_point_market_balances`, which has a foreign-key constraint on `users`. This error means the AI participant row does not yet exist in the `users` table.
+
+**Fix:**
+1. Insert the AI participant user row — run Step 12a (the `INSERT INTO users ...` SQL block only; the `users` table already exists from migration #2).
+2. Re-run migrations — TypeORM will resume from migration #13:
 ```bash
 make migrate-prod
 ```
-If the database is in an inconsistent state:
+
+**If the database is in an inconsistent state** (e.g. migration #13 partially applied):
+```bash
+export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  psql -U "$DB_USERNAME" -d "$DB_NAME" \
+  -c "DELETE FROM migrations WHERE name LIKE '%QPointsMarket%';"
+# Now insert the AI participant (Step 12a), then re-run:
+make migrate-prod
+```
+
+**Full reset** (deletes all data — only use on a brand-new server with no real users):
 ```bash
 export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
 docker compose -f docker-compose.prod.yml exec -T postgres \
   psql -U "$DB_USERNAME" -d "$DB_NAME" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-# Then re-run Step 12a, then Step 12b
+# Then re-run Step 12a from the beginning (both sub-steps)
 ```
 
 ### "Too many login attempts" — SSH locked out

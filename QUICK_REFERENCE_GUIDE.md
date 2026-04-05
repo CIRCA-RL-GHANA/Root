@@ -67,13 +67,22 @@ flutter run -d chrome           # PWA in browser
 | `make logs SERVICE=postgres` | Tail database logs |
 | `make logs SERVICE=nginx` | Tail Nginx logs |
 | `make migrate` | Run migrations locally (requires Node.js + ts-node) |
+| `make migrate-revert` | Revert last migration locally |
 | `make migrate-prod` | Run migrations inside production container (compiled JS) |
 | `make ssl DOMAIN=<d> EMAIL=<e>` | Provision Let's Encrypt SSL |
+| `make build-backend` | Compile NestJS TypeScript only |
 | `make build-docker` | Rebuild production Docker image without deploying |
 | `make build-apk` | Build Android APK (release, obfuscated) |
 | `make build-aab` | Build Android App Bundle for Play Store |
 | `make build-ios` | Build iOS IPA |
 | `make build-web` | Build Flutter PWA |
+| `make setup` | Install all dependencies (backend + frontend) |
+| `make dev-backend` | Start NestJS in dev mode |
+| `make dev-db` | Start dev postgres + redis only |
+| `make test` | Run all tests |
+| `make lint` | Lint everything |
+| `make clean` | Clean all build artifacts |
+| `make clean-docker` | Remove all Docker containers, volumes, images |
 
 ---
 
@@ -106,7 +115,8 @@ docker compose down             # Stop dev stack
 ```bash
 npm run migration:run           # Apply all pending migrations (local dev — requires ts-node)
 npm run migration:revert        # Revert the last applied migration
-npm run migration:generate -- src/database/migrations/<Name>  # Generate from entities
+npm run migration:generate      # Preview migration from current entity state
+# Usage: npm run migration:generate -- -d src/database/data-source.ts -n src/database/migrations/MyMigrationName
 ```
 
 **Production migration commands (run on the VPS):**
@@ -453,7 +463,7 @@ const socket = io('wss://api.genieinprompt.app/chat', {
 [ ] .env populated and validated (./scripts/validate-env.sh --strict)
 [ ] SSL provisioned (make ssl DOMAIN=api.genieinprompt.app EMAIL=...)
 [ ] DB_SYNCHRONIZE=false
-[ ] AI participant user pre-seeded (Step 12a of GO_LIVE_GUIDE — run BEFORE migrations)
+[ ] AI participant user pre-seeded (Step 12a of GO_LIVE_GUIDE — insert after migration #2 applies, before migration #13)
 [ ] Migrations applied (make migrate-prod) — 25 rows in SELECT name FROM migrations
 [ ] make deploy completed successfully
 [ ] Health check passing (curl https://api.genieinprompt.app/api/v1/health)
