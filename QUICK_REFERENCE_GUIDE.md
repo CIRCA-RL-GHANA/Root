@@ -1,4 +1,4 @@
-﻿# Quick Reference Guide
+# Quick Reference Guide
 
 Concise commands, patterns, and lookups for day-to-day development and operations.
 
@@ -19,6 +19,10 @@ Concise commands, patterns, and lookups for day-to-day development and operation
 - [WebSocket Events](#websocket-events)
 - [Error Response Shape](#error-response-shape)
 - [Deployment Checklist](#deployment-checklist)
+- [AI Fraud Thresholds](#ai-fraud-thresholds)
+- [Dynamic Pricing Formula](#dynamic-pricing-formula)
+- [Key Port Reference](#key-port-reference)
+- [Log Files](#log-files)
 
 ---
 
@@ -42,7 +46,7 @@ flutter run                     # Interactive device selection
 flutter run -d chrome           # PWA in browser
 ```
 
-**Swagger UI (dev only):** http://localhost:3000/api/docs  
+**Swagger UI (dev only):** http://localhost:3000/api/docs
 **Health check:** http://localhost:3000/api/v1/health
 
 ---
@@ -55,7 +59,7 @@ flutter run -d chrome           # PWA in browser
 | `make preflight` | Run pre-deployment checks without deploying |
 | `make rollback` | Roll app container back to previous image (does not revert migrations) |
 | `make restart` | Restart all containers |
-| `make restart-app` | Rebuild and restart app container only (zero-downtime) |
+| `make restart-app` | Rebuild and restart app container only |
 | `make down` | Stop all production services |
 | `make healthcheck` | Check all service health |
 | `make status` | View container status and resource usage |
@@ -100,14 +104,14 @@ docker compose down             # Stop dev stack
 ## Database / Migrations
 
 ```bash
-npm run migration:run           # Apply all pending migrations (local dev only — runs from TypeScript)
+npm run migration:run           # Apply all pending migrations (local dev — requires ts-node)
 npm run migration:revert        # Revert the last applied migration
 npm run migration:generate -- src/database/migrations/<Name>  # Generate from entities
 ```
 
 **Production migration commands (run on the VPS):**
 ```bash
-make migrate-prod               # Run migrations inside the production container (compiled JS)
+make migrate-prod               # Run migrations inside the production container
 
 # Check which migrations have been applied:
 export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
@@ -116,11 +120,10 @@ docker compose -f docker-compose.prod.yml exec -T postgres \
   -c "SELECT name FROM migrations ORDER BY id;"
 ```
 
-> `npm run migration:run` uses `ts-node` (dev dependency) and only works locally. The production Docker image contains compiled output only — use `make migrate-prod` instead.
+> `npm run migration:run` uses `ts-node` (dev dependency) and only works locally. Use `make migrate-prod` for production.
 
 **Initial seed (optional — creates admin user + sample data):**
 ```bash
-# Run from inside the backend directory with .env variables in scope (local/staging only)
 cd orionstack-backend--main && npm run seed
 ```
 
@@ -190,7 +193,7 @@ dart run build_runner build --delete-conflicting-outputs   # Code generation
 
 ## API Endpoints Cheatsheet
 
-**Base:** `https://api.promptgenie.app/api/v1`  
+**Base:** `https://api.genieinprompt.app/api/v1`
 **Auth:** `Authorization: Bearer <token>`
 
 ### Auth
@@ -297,22 +300,22 @@ Required before deployment:
 
 ```
 ✅ NODE_ENV=production
-✅ DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME
+✅ DB_HOST=postgres, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME
 ✅ DB_SYNCHRONIZE=false
 ✅ JWT_SECRET (≥48 base64 chars, openssl rand -base64 48)
-✅ JWT_REFRESH_SECRET (different value)
+✅ JWT_REFRESH_SECRET (different from JWT_SECRET)
 ✅ PIN_ENCRYPTION_KEY (32 hex chars, openssl rand -hex 32)
-✅ REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
-✅ SENDGRID_API_KEY, EMAIL_FROM
+✅ REDIS_HOST=redis, REDIS_PORT, REDIS_PASSWORD
+✅ SENDGRID_API_KEY, EMAIL_FROM=noreply@genieinprompt.app
 ✅ TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
-✅ CORS_ORIGIN (production frontend domain)
+✅ CORS_ORIGIN=https://genieinprompt.app
 ```
 
 Generate secrets:
 ```bash
-openssl rand -base64 48    # JWT_SECRET / JWT_REFRESH_SECRET
-openssl rand -hex 32       # PIN_ENCRYPTION_KEY
-openssl rand -base64 32 | tr -d '/+=' | head -c 32   # DB_PASSWORD / REDIS_PASSWORD
+openssl rand -base64 48                              # JWT_SECRET / JWT_REFRESH_SECRET
+openssl rand -hex 32                                 # PIN_ENCRYPTION_KEY
+openssl rand -base64 32 | tr -d '/+=' | head -c 32  # DB_PASSWORD / REDIS_PASSWORD
 ```
 
 ---
@@ -320,10 +323,10 @@ openssl rand -base64 32 | tr -d '/+=' | head -c 32   # DB_PASSWORD / REDIS_PASSW
 ## AI Service Methods (Flutter)
 
 ```dart
-// Ride pricing
+// Dynamic ride pricing
 AiService.instance.getDynamicPricing(context)
 
-// Fraud detection
+// Fraud detection score
 AiService.instance.getFraudScore(transactionData)
 
 // Product recommendations
@@ -347,10 +350,10 @@ AiService.instance.getFinancialInsights(userId)
 // Spending patterns
 AiService.instance.getSpendingPattern(userId)
 
-// AI discount recommendation
+// Discount recommendation
 AiService.instance.getRecommendedDiscount(userId)
 
-// Subscription recommendation
+// Subscription plan recommendation
 AiService.instance.getRecommendedPlan(userId)
 
 // Conversation summary
@@ -385,13 +388,13 @@ Consumer<AIInsightsNotifier>(
 
 ## WebSocket Events
 
-**URL:** `wss://api.promptgenie.app/socket.io/chat`  
+**URL:** `wss://api.genieinprompt.app/socket.io/chat`
 **Namespace:** `/chat`
 
 ### Connect
 
 ```javascript
-const socket = io('wss://api.promptgenie.app/chat', {
+const socket = io('wss://api.genieinprompt.app/chat', {
   auth: { token: 'Bearer <accessToken>' }
 });
 ```
@@ -422,7 +425,7 @@ const socket = io('wss://api.promptgenie.app/chat', {
 ```json
 {
   "statusCode": 400,
-  "timestamp": "2024-01-15T09:30:00.000Z",
+  "timestamp": "2026-04-05T09:30:00.000Z",
   "path": "/api/v1/orders",
   "method": "POST",
   "error": "Bad Request",
@@ -445,17 +448,19 @@ const socket = io('wss://api.promptgenie.app/chat', {
 ## Deployment Checklist
 
 ```
-[ ] DNS A record → server IP
+[ ] DNS A record → server IP (api.genieinprompt.app)
 [ ] Ports 80 + 443 open in firewall
 [ ] .env populated and validated (./scripts/validate-env.sh --strict)
-[ ] SSL provisioned (make ssl DOMAIN=... EMAIL=...)
+[ ] SSL provisioned (make ssl DOMAIN=api.genieinprompt.app EMAIL=...)
 [ ] DB_SYNCHRONIZE=false
-[ ] docker compose -f docker-compose.prod.yml pull
-[ ] make deploy
-[ ] AI participant user pre-seeded (see GO_LIVE_GUIDE Step 12a — MUST run before migrations)
-[ ] Migrations applied (make migrate-prod)
-[ ] Health check passing (curl https://api.promptgenie.app/api/v1/health)
-[ ] Smoke test: expected 401 → curl https://api.promptgenie.app/api/v1/auth/me
+[ ] AI participant user pre-seeded (Step 12a of GO_LIVE_GUIDE — run BEFORE migrations)
+[ ] Migrations applied (make migrate-prod) — 25 rows in SELECT name FROM migrations
+[ ] make deploy completed successfully
+[ ] Health check passing (curl https://api.genieinprompt.app/api/v1/health)
+[ ] Smoke test: expected 401 → curl https://api.genieinprompt.app/api/v1/auth/me
+[ ] PWA live at https://genieinprompt.app
+[ ] GitHub Actions secrets configured (DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_PORT)
+[ ] Database backups cron configured (/backups/test_backup.sql exists and is non-empty)
 ```
 
 ---

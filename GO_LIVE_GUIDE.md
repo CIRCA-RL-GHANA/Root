@@ -45,8 +45,8 @@ Gather the following accounts and credentials. You will not be able to complete 
 | Service | What it's for | URL |
 |---|---|---|
 | **GitHub** | Your code is stored here | github.com |
-| **Hosting provider** (Hostinger, DigitalOcean, or similar) | The Linux server that runs the backend | See Step 3 |
-| **Domain registrar** (Namecheap, Cloudflare, GoDaddy, etc.) | Your domain name (e.g. `promptgenie.app`) | See Step 2 |
+| **Hostinger** (or DigitalOcean / Vultr) | The Linux server that runs the backend | See Step 3 |
+| **Domain registrar** (Namecheap, Cloudflare, GoDaddy, etc.) | Your domain name (`genieinprompt.app`) | See Step 2 |
 | **SendGrid** | Sending emails (OTP codes, receipts) | sendgrid.com |
 | **Twilio** | Sending SMS (OTP codes) | twilio.com |
 | **Flutterwave** or **Paystack** | Processing payments (choose one — see Section 8.4/8.5) | flutterwave.com / paystack.com |
@@ -59,7 +59,7 @@ Gather the following accounts and credentials. You will not be able to complete 
 - SendGrid API key — create one at sendgrid.com → Settings → API Keys
 - Twilio Account SID and Auth Token — visible on your Twilio console homepage
 - Twilio phone number — purchase one inside the Twilio console
-- A verified sender email address in SendGrid (e.g. `noreply@promptgenie.com`)
+- A verified sender email address in SendGrid (e.g. `noreply@genieinprompt.app`)
 
 ### Tools on Your Local Computer
 
@@ -72,15 +72,15 @@ You only need a terminal (command line):
 
 ## 2. Buy a Domain Name
 
-If you already have `promptgenie.app` registered, skip to Step 3.
+If you already have `genieinprompt.app` registered, skip to Step 3.
 
 1. Go to [namecheap.com](https://namecheap.com) (or any registrar).
 2. Search for your domain name and purchase it.
 3. Keep the registrar dashboard open — you will need it in Step 4.
 
 > **Tip:** You need **two** DNS records for PROMPT Genie:
-> - `api.promptgenie.app` → points to your VPS (the backend)
-> - `promptgenie.app` → points to Vercel (the PWA — handled automatically in Step 13)
+> - `api.genieinprompt.app` → points to your VPS (the backend)
+> - `genieinprompt.app` → points to Vercel (the PWA — handled automatically in Step 14)
 
 ---
 
@@ -99,17 +99,17 @@ A VPS is a Linux computer in a data center that stays on 24/7.
 
 ### What you'll receive
 
-- A **server IP address** (e.g. `123.45.67.89`)
+- A **server IP address** (e.g. `72.61.17.215`)
 - A **root password** (or option to set one)
 - SSH access on port 22
 
-> **Alternatives:** DigitalOcean Droplet ($24/mo, 4GB RAM), Vultr, Linode — all work fine with this guide.
+> **Alternatives:** DigitalOcean Droplet ($24/mo, 4 GB RAM), Vultr, Linode — all work fine with this guide.
 
 ---
 
 ## 4. Point Your Domain at Your Server
 
-This tells the internet that `api.promptgenie.app` lives on your server.
+This tells the internet that `api.genieinprompt.app` lives on your server.
 
 1. Log in to your domain registrar (Namecheap, Cloudflare, etc.).
 2. Go to **DNS Management** for your domain.
@@ -124,9 +124,9 @@ This tells the internet that `api.promptgenie.app` lives on your server.
 DNS propagation takes anywhere from 2 minutes to 1 hour. You can check it with:
 ```bash
 # Run this from your local machine
-nslookup api.promptgenie.app
+nslookup api.genieinprompt.app
 ```
-It should eventually return your server IP. Do not proceed to Step 9 (SSL) until it does.
+It should eventually return your server IP. Do not proceed to Step 10 (SSL) until it does.
 
 ---
 
@@ -176,7 +176,7 @@ bash <(curl -s https://raw.githubusercontent.com/CIRCA-RL-GHANA/NestJs-Ready/mai
 ```
 
 The script will ask you two questions:
-1. **API domain:** type `api.promptgenie.app` and press Enter
+1. **API domain:** type `api.genieinprompt.app` and press Enter
 2. **SSL email:** type your email address and press Enter
 
 The script will then automatically:
@@ -193,7 +193,7 @@ The script will then automatically:
 
 When it finishes, you will see `✓ VPS initialization complete`.
 
-> **Warning — wrong secret names printed at end of script:** The summary printed by `vps-init.sh` will show `VPS_HOST`, `VPS_USER`, etc. as GitHub secret names. **These are wrong.** The actual GitHub Actions workflows in this repo require these exact names: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PORT`. Ignore the script's printed names and use the values from Step 15c instead.
+> **Warning — wrong secret names printed at end of script:** The summary printed by `vps-init.sh` at the end of its run will show `VPS_HOST`, `VPS_USER`, etc. as GitHub secret names. **These are wrong.** The actual GitHub Actions workflows in this repo require these exact names: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PORT`. Ignore the script's printed names and use the values from Step 15c instead.
 
 > **CRITICAL — Do not disconnect SSH yet.**
 >
@@ -240,29 +240,29 @@ ls
 
 **Verify the nginx.conf SSL paths:**
 
-The `nginx/nginx.conf` file ships with certificate paths already set to `api.promptgenie.app`. Confirm they are correct:
+The `nginx/nginx.conf` file ships with certificate paths set to `api.genieinprompt.app`. Confirm they match:
 
 ```bash
 grep ssl_certificate nginx/nginx.conf
 # Expected output:
-#   ssl_certificate /etc/letsencrypt/live/api.promptgenie.app/fullchain.pem;
-#   ssl_certificate_key /etc/letsencrypt/live/api.promptgenie.app/privkey.pem;
+#   ssl_certificate /etc/letsencrypt/live/api.genieinprompt.app/fullchain.pem;
+#   ssl_certificate_key /etc/letsencrypt/live/api.genieinprompt.app/privkey.pem;
 ```
 
-> **If you are using a different API domain** (not `api.promptgenie.app`), update those two lines now:
+> **If you are using a different API domain** (not `api.genieinprompt.app`), update those two lines now:
 > ```bash
 > DOMAIN=api.yourdomain.com   # ← your actual API domain
-> sed -i "s|api.promptgenie.app|${DOMAIN}|g" nginx/nginx.conf
+> sed -i "s|api.genieinprompt.app|${DOMAIN}|g" nginx/nginx.conf
 > grep ssl_certificate nginx/nginx.conf   # verify
 > ```
 
-> **Why this matters:** nginx will refuse to start if the certificate paths do not match files that exist on disk. This is the most common cause of `make deploy` failing at the nginx startup step (see Troubleshooting Step 18 if this happens).
+> **Why this matters:** nginx will refuse to start if the certificate paths do not match files that exist on disk. This is the most common cause of `make deploy` failing at the nginx startup step (see Section 18 if this happens).
 
 ---
 
 ## 8. Set Up All Third-Party Services
 
-Before you write your `.env` file, you need to create accounts and collect credentials from every external service PROMPT Genie depends on. Work through each subsection below and keep the values in a temporary secure note (password manager, not a text file).
+Before you write your `.env` file, you need to create accounts and collect credentials from every external service PROMPT Genie depends on. Work through each subsection below and keep the values in a secure note (password manager — not a plain text file).
 
 ---
 
@@ -319,13 +319,11 @@ You must prove you own the email address (or domain) that emails will come from.
 2. Click **Verify a Single Sender**.
 3. Fill in the form:
    - **From Name:** `PROMPT Genie`
-   - **From Email Address:** `noreply@promptgenie.com` (or whatever you want to use)
+   - **From Email Address:** `noreply@genieinprompt.app`
    - **Reply To:** your personal/business email
    - **Company Address:** your business address
 4. Click **Create**.
-5. SendGrid sends a verification email to `noreply@promptgenie.com`. Check that inbox and click the link.
-
-> If you do not control the inbox of `noreply@promptgenie.com`, use an address you do control for now (e.g. `yourname@gmail.com`). You can change it later.
+5. SendGrid sends a verification email to `noreply@genieinprompt.app`. Check that inbox and click the link.
 
 **Option B — Domain authentication (recommended for production):**
 
@@ -345,14 +343,10 @@ You must prove you own the email address (or domain) that emails will come from.
 
 **Your values:**
 ```
-SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   ← the key you just copied
-EMAIL_FROM=noreply@promptgenie.com                       ← must match your verified sender
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+EMAIL_FROM=noreply@genieinprompt.app
 EMAIL_FROM_NAME=PROMPT Genie
 ```
-
-#### Test it (optional but recommended)
-
-In the SendGrid dashboard, go to **Email API → Integration Guide → SMTP Relay** and use the SMTP test to send a test email before deploying.
 
 ---
 
@@ -360,93 +354,70 @@ In the SendGrid dashboard, go to **Email API → Integration Guide → SMTP Rela
 
 Twilio sends OTP verification codes via SMS when users register or log in.
 
-**Cost:** ~$0.0075–$0.05 per SMS depending on country. A trial account gives $15 credit (enough for ~300–2000 test messages). You need a paid account before going live with real users.
+**Cost:** ~$0.0075–$0.05 per SMS depending on country. A trial account gives $15 credit. You need a paid account before going live with real users.
 
 #### Create your account
 
 1. Go to [twilio.com](https://twilio.com) and click **Sign Up**.
 2. Verify your email address and phone number.
-3. On the welcome screen, answer the setup questions:
-   - What are you building? → **SMS**
-   - What language? → **Node.js** (does not matter, just gets you to the console faster)
 
 #### Get your Account SID and Auth Token
 
 1. From the [Twilio Console homepage](https://console.twilio.com), look at the top panel.
-2. You will see:
-   - **Account SID** — starts with `AC`, e.g. `ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
-   - **Auth Token** — a 32-character string (click the eye icon to reveal it)
-3. Copy both values.
+2. Copy:
+   - **Account SID** — starts with `AC`
+   - **Auth Token** — click the eye icon to reveal it
 
 #### Get a phone number
 
-1. In the Twilio Console, go to **Phone Numbers → Manage → Buy a Number**.
-2. Select your country.
-3. Under **Capabilities**, make sure **SMS** is checked.
-4. Click **Search** and choose any available number.
-5. Click **Buy** (trial accounts get this for free from their credit).
-6. Your number is now shown in **Phone Numbers → Manage → Active Numbers**.
+1. Go to **Phone Numbers → Manage → Buy a Number**.
+2. Select your country, ensure **SMS** capability is checked, and purchase.
 
-> **For Ghana (GHS currency):** Twilio supports Ghana. Search with country filter **Ghana** and select a number there, or use an international number capable of sending to Ghanaian (+233) numbers.
+> **For Ghana:** Search with country filter **Ghana** and select a number with `+233` prefix, or use an international number capable of sending to Ghanaian numbers.
 
-> **Trial account restriction:** Trial accounts can only send SMS to verified phone numbers. Go to **Phone Numbers → Verified Caller IDs** and add the phone numbers you want to test with. Remove this restriction by upgrading your account before going live.
-
-#### Upgrade to a paid account (before going live)
-
-1. Go to **Billing → Upgrade Account**.
-2. Add a credit card. Twilio only charges for what you use — there is no monthly fee.
+> **Trial account restriction:** Trial accounts can only send SMS to verified phone numbers. Add test numbers under **Phone Numbers → Verified Caller IDs**. Upgrade billing before going live.
 
 **Your values:**
 ```
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  ← from Console homepage
-TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx    ← from Console homepage
-TWILIO_PHONE_NUMBER=+12025551234                      ← your purchased number in E.164 format
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_PHONE_NUMBER=+12025551234
 ```
 
-E.164 format means: `+` then country code then number, no spaces or dashes. Example: `+12025551234` for a US number, `+447911123456` for UK, `+233201234567` for Ghana.
+E.164 format: `+` then country code then number, no spaces or dashes. Example: `+233201234567` for Ghana.
 
 ---
 
 ### 8.4 Flutterwave — Payments (Recommended)
 
-Flutterwave is the recommended payment provider for PROMPT Genie, especially for African markets (Ghana, Nigeria, Kenya, etc.). It supports card payments, mobile money (MTN, Vodafone, AirtelTigo), and bank transfers.
+Flutterwave is the recommended payment provider for PROMPT Genie, especially for African markets (Ghana, Nigeria, Kenya). It supports card payments, mobile money (MTN, Vodafone, AirtelTigo), and bank transfers.
 
-**Cost:** No monthly fee. Flutterwave charges a percentage per transaction (typically 1.4% for cards, varies by method and country). See [flutterwave.com/pricing](https://flutterwave.com/pricing).
+**Cost:** No monthly fee. Typically 1.4% per card transaction; varies by method and country.
 
 #### Create your business account
 
 1. Go to [app.flutterwave.com](https://app.flutterwave.com) and click **Create an Account**.
-2. Choose **Business Account**.
-3. Fill in your business details:
-   - Business name, email, phone, country
-   - Business type (select what applies — e-commerce, fintech, logistics, etc.)
-4. Verify your email address.
+2. Choose **Business Account** and fill in your business details.
+3. Verify your email address.
 
 #### Complete KYC verification
 
-Flutterwave requires identity verification before you can receive real money. This typically takes 1–3 business days.
+KYC is required before you can receive real money (1–3 business days). You can use test keys immediately while waiting.
 
-1. In your dashboard, go to **Settings → Business Information**.
-2. Upload the required documents:
-   - Government-issued ID (passport, national ID, driver's licence)
-   - Business registration certificate (if a registered business)
-   - Director/owner details
-3. Submit and wait for approval. You will receive an email when approved.
-
-> **Use test mode while waiting.** Flutterwave gives you test API keys immediately. You can build and test the full payment flow before KYC is approved.
+1. Go to **Settings → Business Information**.
+2. Upload government-issued ID, business registration certificate (if applicable), and director details.
 
 #### Get your API keys
 
-1. In your Flutterwave dashboard, go to **Settings → API Keys**.
-2. You will see two environments:
+1. Go to **Settings → API Keys**.
 
-**Test keys (use these first):**
+**Test keys (use first):**
 ```
 PAYMENT_FACILITATOR_SECRET_KEY=FLWSECK_TEST-xxxxxxxxxxxxxxxxxxxx
 PAYMENT_FACILITATOR_PUBLIC_KEY=FLWPUBK_TEST-xxxxxxxxxxxxxxxxxxxx
 ```
 
-**Live keys (use after KYC is approved):**
+**Live keys (after KYC approval):**
 ```
 PAYMENT_FACILITATOR_SECRET_KEY=FLWSECK-xxxxxxxxxxxxxxxxxxxx
 PAYMENT_FACILITATOR_PUBLIC_KEY=FLWPUBK-xxxxxxxxxxxxxxxxxxxx
@@ -454,17 +425,15 @@ PAYMENT_FACILITATOR_PUBLIC_KEY=FLWPUBK-xxxxxxxxxxxxxxxxxxxx
 
 #### Set up your webhook
 
-Webhooks let Flutterwave notify your server when a payment is completed, even if the user closes their browser.
-
-1. In your dashboard, go to **Settings → Webhooks**.
+1. Go to **Settings → Webhooks**.
 2. Set the webhook URL to:
    ```
-   https://api.promptgenie.app/api/v1/payments/webhook
+   https://api.genieinprompt.app/api/v1/payments/webhook
    ```
-3. Under **Secret Hash**, generate a random string and copy it. This is your `PAYMENT_FACILITATOR_WEBHOOK_SECRET`.
+3. Generate a random **Secret Hash** string — this is your `PAYMENT_FACILITATOR_WEBHOOK_SECRET`.
 4. Save.
 
-#### Find your currency code
+#### Currency codes
 
 | Country | Currency | Code |
 |---|---|---|
@@ -472,7 +441,6 @@ Webhooks let Flutterwave notify your server when a payment is completed, even if
 | Nigeria | Nigerian Naira | `NGN` |
 | Kenya | Kenyan Shilling | `KES` |
 | United States | US Dollar | `USD` |
-| United Kingdom | British Pound | `GBP` |
 
 **Your values:**
 ```
@@ -481,10 +449,10 @@ PAYMENT_FACILITATOR_SECRET_KEY=FLWSECK-xxxxxxxxxxxxxxxxxxxx
 PAYMENT_FACILITATOR_PUBLIC_KEY=FLWPUBK-xxxxxxxxxxxxxxxxxxxx
 PAYMENT_FACILITATOR_WEBHOOK_SECRET=your-random-webhook-secret
 PAYMENT_FACILITATOR_CURRENCY=GHS
-PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.genieinprompt.app/api/v1/payments/webhook
 ```
 
-#### Test card numbers (use in test mode only)
+#### Test card numbers (test mode only)
 
 | Card | Number | CVV | Expiry |
 |---|---|---|---|
@@ -496,75 +464,47 @@ PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webh
 
 ### 8.5 Paystack — Payments (Alternative)
 
-Use Paystack instead of Flutterwave if you are based in Nigeria and primarily serve Nigerian customers. The setup process is nearly identical.
+Use Paystack if you are primarily serving Nigerian customers.
 
 **Cost:** 1.5% per transaction (+ ₦100 for transactions above ₦2,500). No monthly fee.
 
-#### Create your account
+#### Create your account and get API keys
 
 1. Go to [dashboard.paystack.com](https://dashboard.paystack.com) and sign up.
-2. Verify your email.
-3. Complete the business profile under **Settings → Business Settings**.
-4. Submit KYC documents under **Settings → Compliance**.
-
-#### Get your API keys
-
-1. Go to **Settings → API Keys & Webhooks**.
-2. Copy:
-   - **Test Secret Key** — starts with `sk_test_`
-   - **Test Public Key** — starts with `pk_test_`
-   - **Live Secret Key** — starts with `sk_live_` (available after KYC approval)
-   - **Live Public Key** — starts with `pk_live_`
+2. Go to **Settings → API Keys & Webhooks**.
+3. Copy your **Secret Key** and **Public Key** (test and live versions).
 
 #### Set up your webhook
 
-1. On the same **API Keys & Webhooks** page, under **Webhook URL**, enter:
-   ```
-   https://api.promptgenie.app/api/v1/payments/webhook
-   ```
-2. Save. Paystack does not use a separate webhook secret — it uses your secret key to sign events (the app handles this automatically).
+Under **API Keys & Webhooks → Webhook URL**, enter:
+```
+https://api.genieinprompt.app/api/v1/payments/webhook
+```
 
 **Your values:**
 ```
 PAYMENT_FACILITATOR_PROVIDER=paystack
 PAYMENT_FACILITATOR_SECRET_KEY=sk_live_xxxxxxxxxxxxxxxxxxxx
 PAYMENT_FACILITATOR_PUBLIC_KEY=pk_live_xxxxxxxxxxxxxxxxxxxx
-PAYMENT_FACILITATOR_WEBHOOK_SECRET=                    ← leave blank for Paystack
+PAYMENT_FACILITATOR_WEBHOOK_SECRET=
 PAYMENT_FACILITATOR_CURRENCY=NGN
-PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.genieinprompt.app/api/v1/payments/webhook
 ```
 
 ---
 
 ### 8.6 OpenAI — AI Features (Optional)
 
-OpenAI powers the natural language AI features: sentiment analysis, intent detection, conversation summaries, financial insights, and the AI assistant. The app runs without it — AI features fall back gracefully — but live use requires an API key.
+OpenAI powers natural language features: sentiment analysis, intent detection, conversation summaries, financial insights, and the AI assistant. The app runs without it — all AI features fall back gracefully.
 
-**Cost:** Pay-per-use. `gpt-4o-mini` (the default model) costs approximately $0.15 per 1 million input tokens. For a typical user session, this is fractions of a cent.
+**Cost:** Pay-per-use. `gpt-4o-mini` costs ~$0.15 per million input tokens — fractions of a cent per user session.
 
-#### Create your account
+#### Create your account and API key
 
 1. Go to [platform.openai.com](https://platform.openai.com) and sign up.
-2. Verify your email and phone number.
-3. You get $5 in free credits on sign-up (enough for extensive testing).
-
-#### Add billing (required for production)
-
-1. Go to **Settings → Billing → Add payment method**.
-2. Add a credit card.
-3. Set a **monthly spending limit** under **Billing → Limits**. Start with $20–$50 to prevent surprise bills while you test.
-
-#### Create an API key
-
-1. Go to **API Keys** in the left sidebar (or [platform.openai.com/api-keys](https://platform.openai.com/api-keys)).
-2. Click **Create new secret key**.
-3. Name it `promptgenie-production`.
-4. Click **Create secret key**.
-5. **Copy the key immediately** — it starts with `sk-` and is shown only once.
-
-#### Choose your model
-
-The default `gpt-4o-mini` is the right choice for production — it is fast, cheap, and capable enough for all PROMPT Genie features. Do not change `AI_MODEL` unless you have a specific reason.
+2. Go to **Settings → Billing → Add payment method**. Set a monthly spending limit.
+3. Go to **API Keys → Create new secret key** → name it `promptgenie-production`.
+4. **Copy the key immediately** — it starts with `sk-` and is shown only once.
 
 **Your values:**
 ```
@@ -579,53 +519,30 @@ AI_TOP_P=0.9
 AI_REQUEST_TIMEOUT=30000
 ```
 
-> **If you do not want to use OpenAI yet,** set `AI_API_KEY=` (blank). The app will still work — sentiment analysis, intent detection, and the AI assistant will return empty/default responses instead of erroring.
+> If you do not want to use OpenAI yet, set `AI_API_KEY=` (blank). The app will start normally — AI features return empty/default responses instead of erroring.
 
 ---
 
 ### 8.7 Google Maps — Ride Routing (Optional)
 
-Google Maps is used to calculate ride routes, distances, estimated times, and to geocode addresses. Without it, the ride module still works but cannot show turn-by-turn routing or accurate fares.
+Used to calculate ride routes, distances, and estimated times. Without it, the ride module works but cannot show turn-by-turn routing or accurate fare estimates.
 
-**Cost:** $200 free monthly credit (covers ~40,000 map loads or ~100,000 geocoding requests per month). Most early-stage apps stay within the free tier.
+**Cost:** $200 free monthly credit — covers ~40,000 map loads or ~100,000 geocoding requests per month.
 
-#### Create a Google Cloud account
+#### Enable APIs and create a key
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com) and sign in with a Google account.
-2. Accept the terms of service.
-3. Add a billing account under **Billing** (required even for free tier — Google needs a card on file).
-
-#### Create a project
-
-1. Click the project dropdown at the top and select **New Project**.
-2. Name it `promptgenie`.
-3. Click **Create**.
-
-#### Enable the required APIs
-
-1. Go to **APIs & Services → Library**.
-2. Search for and enable each of the following one by one:
-   - **Maps JavaScript API**
-   - **Geocoding API**
-   - **Directions API**
-   - **Distance Matrix API**
-   - **Places API**
-
-#### Create an API key
-
-1. Go to **APIs & Services → Credentials → Create Credentials → API Key**.
-2. Copy the key shown.
-3. Click **Restrict Key** (important for security):
-   - Under **Application restrictions**, select **IP addresses** and add your server IP.
-   - Under **API restrictions**, select **Restrict key** and check only the 5 APIs you enabled above.
-4. Save.
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a project named `promptgenie`.
+2. Go to **APIs & Services → Library** and enable:
+   - Maps JavaScript API, Geocoding API, Directions API, Distance Matrix API, Places API
+3. Go to **Credentials → Create Credentials → API Key**. Copy the key.
+4. Click **Restrict Key** — add your server IP under Application restrictions; restrict to the 5 APIs above under API restrictions.
 
 **Your value:**
 ```
 GOOGLE_MAPS_API_KEY=AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-> **If you are not launching the ride feature immediately,** leave `GOOGLE_MAPS_API_KEY=` blank and add it later. The app will not crash without it.
+> Leave blank to disable ride routing. The app will not crash without it.
 
 ---
 
@@ -650,9 +567,7 @@ nano .env
 
 `nano` is a simple text editor. Arrow keys to navigate. `Ctrl+O` to save. `Ctrl+X` to exit.
 
-### Step 9c — Replace every CHANGE_ME with your real values
-
-Use the values you collected in Step 8. Here is the complete file with annotations:
+### Step 9c — Fill in all values
 
 ```env
 # ── Application ───────────────────────────────────────────────────────────────
@@ -665,13 +580,13 @@ API_PREFIX=api
 API_VERSION=v1
 
 # ── Database ───────────────────────────────────────────────────────────────────
-# DB_HOST must be "postgres" (the Docker container name) — do not change this
+# DB_HOST must be "postgres" (the Docker container name) — do not change
 DB_HOST=postgres
 DB_PORT=5432
 DB_USERNAME=postgres
 DB_PASSWORD=<paste DB_PASSWORD from Section 8.1>
 DB_NAME=promptgenie_prod
-# NEVER set DB_SYNCHRONIZE=true in production — it will drop and recreate tables
+# NEVER set DB_SYNCHRONIZE=true in production
 DB_SYNCHRONIZE=false
 DB_LOGGING=false
 DB_SSL=false
@@ -690,19 +605,19 @@ PIN_ENCRYPTION_KEY=<paste PIN_ENCRYPTION_KEY from Section 8.1>
 PIN_ENCRYPTION_IV=<paste PIN_ENCRYPTION_IV from Section 8.1>
 
 # ── Redis ──────────────────────────────────────────────────────────────────────
-# REDIS_HOST must be "redis" (the Docker container name) — do not change this
+# REDIS_HOST must be "redis" (the Docker container name) — do not change
 REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_PASSWORD=<paste REDIS_PASSWORD from Section 8.1>
 REDIS_DB=0
 
-# ── Email (SendGrid) — see Section 8.2 for setup ──────────────────────────────
+# ── Email (SendGrid) — see Section 8.2 ────────────────────────────────────────
 SENDGRID_API_KEY=<paste SG.xxxx key from Section 8.2>
-EMAIL_FROM=<paste verified sender email from Section 8.2>
+EMAIL_FROM=noreply@genieinprompt.app
 EMAIL_FROM_NAME=PROMPT Genie
-EMAIL_SUPPORT=support@promptgenie.com
+EMAIL_SUPPORT=support@genieinprompt.app
 
-# ── SMS (Twilio) — see Section 8.3 for setup ──────────────────────────────────
+# ── SMS (Twilio) — see Section 8.3 ────────────────────────────────────────────
 TWILIO_ACCOUNT_SID=<paste AC... value from Section 8.3>
 TWILIO_AUTH_TOKEN=<paste auth token from Section 8.3>
 TWILIO_PHONE_NUMBER=<paste +E.164 number from Section 8.3>
@@ -718,22 +633,20 @@ AUTH_RATE_LIMIT=5
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
 # Must exactly match your PWA domain — no trailing slash
-CORS_ORIGIN=https://promptgenie.app
+CORS_ORIGIN=https://genieinprompt.app
 CORS_CREDENTIALS=true
 
 # ── WebSocket / Socket.IO ──────────────────────────────────────────────────────
-# Must match the PWA domain — used for Socket.IO CORS validation
 WEBSOCKET_ENABLED=true
-WEBSOCKET_CORS_ORIGIN=https://promptgenie.app
+WEBSOCKET_CORS_ORIGIN=https://genieinprompt.app
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 LOG_LEVEL=info
 LOG_FILE_PATH=./logs
 
-# ── AI Services — see Section 8.6 for setup ───────────────────────────────────
+# ── AI Services — see Section 8.6 ─────────────────────────────────────────────
 AI_ENABLED=true
 TENSORFLOW_ENABLED=false
-# Leave blank if you are not using OpenAI — the app works without it
 AI_API_KEY=<paste sk-... key from Section 8.6, or leave blank>
 AI_BASE_URL=https://api.openai.com/v1
 AI_MODEL=gpt-4o-mini
@@ -748,22 +661,21 @@ AI_PLATFORM_FEE_PCT=8
 ML_MODEL_PATH=./ml-models
 FEATURE_STORE_UPDATE_INTERVAL=300000
 
-# ── Google Maps — see Section 8.7 for setup ───────────────────────────────────
-# Leave blank to disable ride routing — rides still work without it
+# ── Google Maps — see Section 8.7 ─────────────────────────────────────────────
 GOOGLE_MAPS_API_KEY=<paste AIza... key from Section 8.7, or leave blank>
 
 # ── Monitoring ─────────────────────────────────────────────────────────────────
 HEALTH_CHECK_TIMEOUT=30000
 METRICS_ENABLED=true
 
-# ── Payment Facilitator — see Sections 8.4 / 8.5 for setup ───────────────────
-# Use "mock" to test without real payments. Use "flutterwave" or "paystack" for live.
+# ── Payment Facilitator — see Sections 8.4 / 8.5 ─────────────────────────────
+# Use "mock" for testing without real payments
 PAYMENT_FACILITATOR_PROVIDER=<flutterwave or paystack or mock>
 PAYMENT_FACILITATOR_SECRET_KEY=<paste secret key from Section 8.4 or 8.5>
 PAYMENT_FACILITATOR_PUBLIC_KEY=<paste public key from Section 8.4 or 8.5>
 PAYMENT_FACILITATOR_WEBHOOK_SECRET=<paste webhook secret from Section 8.4>
 PAYMENT_FACILITATOR_CURRENCY=<GHS, NGN, KES, or USD>
-PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.genieinprompt.app/api/v1/payments/webhook
 
 # ── Q Points AI Market Maker ───────────────────────────────────────────────────
 # Leave AI_MARKET_ENABLED=false until fully tested
@@ -781,7 +693,7 @@ AI_RUN_INTERVAL_SECONDS=30
 AI_MIN_CASH_RESERVE_USD=5000
 ```
 
-Save the file: `Ctrl+O` → Enter → `Ctrl+X`
+Save: `Ctrl+O` → Enter → `Ctrl+X`
 
 ### Step 9d — Validate your .env
 
@@ -790,17 +702,17 @@ cd /opt/promptgenie
 ./scripts/validate-env.sh --strict
 ```
 
-Expected output: the **root `.env` section** should be all green checkmarks. The **backend `.env` section** will show yellow warnings — this is normal. The validator auto-creates `orionstack-backend--main/.env` from the backend's `.env.example` file (which contains placeholder values), and those placeholders trigger warnings. In production, Docker reads config from the **root `.env` only** — the backend-specific file is only used for local development outside Docker. You can safely ignore those warnings.
+The **root `.env` section** should be all green checkmarks. The **backend `.env` section** will show yellow warnings — this is expected. The validator auto-creates `orionstack-backend--main/.env` from the backend's `.env.example` (which contains placeholder values). In production, Docker reads config from the **root `.env` only**. You can safely ignore the backend section warnings.
 
-**If the root section shows errors, do not proceed.** Common validation failures and fixes:
+**Common validation failures:**
 
 | Error | Cause | Fix |
 |---|---|---|
 | `JWT_SECRET is required` | Variable is missing or empty | Paste the generated value |
-| `JWT_SECRET and JWT_REFRESH_SECRET must be different` | You used the same value for both | Regenerate one of them with `openssl rand -base64 48` |
-| `PIN_ENCRYPTION_KEY must be 32 hex characters` | Wrong length or wrong format | Run `openssl rand -hex 32` and paste the exact output |
-| `SENDGRID_API_KEY must start with SG.` | Wrong key or not copied fully | Re-copy from SendGrid dashboard |
-| `EMAIL_FROM must be a valid email` | Typo in the email address | Fix the address |
+| `JWT_SECRET and JWT_REFRESH_SECRET must be different` | Same value used for both | Regenerate one: `openssl rand -base64 48` |
+| `PIN_ENCRYPTION_KEY must be 32 hex characters` | Wrong length or format | Run `openssl rand -hex 32` and paste exact output |
+| `SENDGRID_API_KEY must start with SG.` | Wrong key pasted | Re-copy from SendGrid dashboard |
+| `EMAIL_FROM must be a valid email` | Typo in email address | Fix the address |
 | `DB_SYNCHRONIZE must be false in production` | Set to `true` | Change to `false` |
 
 ---
@@ -808,29 +720,24 @@ Expected output: the **root `.env` section** should be all green checkmarks. The
 ## 10. Get an SSL Certificate (HTTPS)
 
 > **Skip this step if `vps-init.sh` completed successfully.**
-> The server setup script in Step 6 already issued your SSL certificate via Certbot standalone. You can confirm with:
+> The server setup script in Step 6 already issued your SSL certificate via Certbot. Confirm with:
 > ```bash
-> ls /opt/promptgenie/certbot/conf/live/api.promptgenie.app/
-> # If you see fullchain.pem and privkey.pem, skip to the Verify section below.
+> ls /opt/promptgenie/certbot/conf/live/api.genieinprompt.app/
+> # If you see fullchain.pem and privkey.pem, skip to Step 11.
 > ```
-> Only run `make ssl` if the cert is missing or expired.
 
-This gives your API the padlock (HTTPS). It is free via Let's Encrypt.
-
-> **Wait** until `nslookup api.promptgenie.app` returns your server IP before running this. The certificate will fail if DNS has not propagated yet.
+> **Wait** until `nslookup api.genieinprompt.app` returns your server IP before running this.
 
 ```bash
 cd /opt/promptgenie
-make ssl DOMAIN=api.promptgenie.app EMAIL=your@email.com
+make ssl DOMAIN=api.genieinprompt.app EMAIL=your@email.com
 ```
 
 Replace `your@email.com` with your real email. Let's Encrypt sends expiry reminders there.
 
-This takes about 30 seconds. When it succeeds you will see `Successfully received certificate`.
-
 **Verify:**
 ```bash
-ls /etc/letsencrypt/live/api.promptgenie.app/
+ls /etc/letsencrypt/live/api.genieinprompt.app/
 # You should see: cert.pem  chain.pem  fullchain.pem  privkey.pem
 ```
 
@@ -845,28 +752,26 @@ cd /opt/promptgenie
 make deploy
 ```
 
-The first build takes 3–6 minutes because it compiles TypeScript and installs Node.js dependencies inside the container.
+The first build takes 3–6 minutes (compiles TypeScript, installs Node.js dependencies inside the container).
 
-**What it's doing while you wait:**
+**What happens while you wait:**
 1. Validates your `.env`
-2. Builds the NestJS Docker image (multi-stage — dev build then production image)
-3. Starts PostgreSQL and waits for it to be ready
+2. Builds the NestJS Docker image (multi-stage build)
+3. Starts PostgreSQL and waits for it to be healthy
 4. Starts Redis
 5. Starts the NestJS app
-6. Starts Nginx (reverse proxy on ports 80 and 443)
+6. Starts Nginx (ports 80 and 443)
 7. Starts the Certbot renewal service
 8. Polls the health endpoint until the app responds
 
 When complete you will see `✓ Deployment complete`.
 
-**Check that all containers are running:**
+**Verify containers are running:**
 ```bash
 make status
-# or
-docker compose -f docker-compose.prod.yml ps
 ```
 
-All five containers should show status `Up` or `healthy`:
+All five containers should show `Up` or `healthy`:
 ```
 NAME                   STATUS
 promptgenie-app        Up (healthy)
@@ -880,20 +785,16 @@ promptgenie-certbot    Up
 
 ## 12. Run Database Migrations
 
-Migrations create all the database tables that the app needs. This only needs to be done once on first deployment (and again when new migrations are added in future updates).
+Migrations create all the database tables. Run once on first deployment (and again when new migrations are added).
 
 ### Step 12a — Pre-seed the AI market-maker account
 
-> **This step is mandatory.** Migration #13 (`CreateQPointsMarketTables`) inserts the AI market-maker's initial Q Points balance into `q_point_market_balances` with a foreign-key reference to the `users` table. If the AI participant row does not exist in `users` when migration #13 runs, the entire migration run will abort with a foreign-key violation and you will need to drop and recreate the database.
+> **This step is mandatory.** Migration #13 (`CreateQPointsMarketTables`) inserts the AI market-maker's initial Q Points balance with a foreign-key reference to the `users` table. If the AI participant row does not exist when migration #13 runs, the entire migration run aborts with a foreign-key violation.
 
-The `.env.example` documents this requirement with the comment:
-> *"Create the matching users row before running migrations in production."*
-
-Run the following **once on a fresh database, before running migrations**. It is safe to re-run (the `ON CONFLICT` clause makes it idempotent):
+Run the following **once, on a fresh database, before running migrations**:
 
 ```bash
 # From /opt/promptgenie on the VPS
-# This sources only DB_USERNAME and DB_NAME from your .env into the current shell
 export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
 
 docker compose -f docker-compose.prod.yml exec -T postgres \
@@ -923,7 +824,7 @@ cd /opt/promptgenie
 make migrate-prod
 ```
 
-This runs 25 migrations in order **inside the running Docker container** (the server does not need Node.js installed locally). You will see each migration name print to the console as it applies.
+This runs 25 migrations in order inside the Docker container — no Node.js needed on the host. You will see each migration name print as it applies.
 
 **Verify all migrations ran:**
 ```bash
@@ -933,9 +834,9 @@ docker compose -f docker-compose.prod.yml exec -T postgres \
   -c "SELECT name FROM migrations ORDER BY id;"
 ```
 
-The query should return 25 rows — one for each migration name. If a migration is missing, re-run `make migrate-prod`.
+Should return 25 rows. If a migration is missing, re-run `make migrate-prod`.
 
-> **Note — CI does not run migrations reliably:** The GitHub Actions backend workflow also attempts `npm run migration:run` on each push, but this command requires `ts-node` which is excluded from the production Docker image, so it silently fails. **Always run `make migrate-prod` manually on the server whenever a deployment includes new migration files.**
+> **Note:** The GitHub Actions backend workflow also attempts `npm run migration:run` on each push, but this requires `ts-node` which is excluded from the production Docker image and silently fails. **Always run `make migrate-prod` manually on the server** whenever a deployment includes new migration files.
 
 ---
 
@@ -943,9 +844,9 @@ The query should return 25 rows — one for each migration name. If a migration 
 
 Run these from your **local machine** (or any browser):
 
-### Health check — the most important test
+### Health check
 ```bash
-curl https://api.promptgenie.app/api/v1/health
+curl https://api.genieinprompt.app/api/v1/health
 ```
 Expected response:
 ```json
@@ -959,40 +860,42 @@ Expected response:
 }
 ```
 
-### Auth smoke test — confirms routing is working
+### Auth smoke test
 ```bash
-curl -i https://api.promptgenie.app/api/v1/auth/me
+curl -i https://api.genieinprompt.app/api/v1/auth/me
 ```
-Expected: `HTTP 401 Unauthorized` — this is correct. It means the endpoint exists and is protecting itself.
+Expected: `HTTP 401 Unauthorized` — this is correct. The endpoint exists and is protected.
 
-### Additional health probes (optional)
+### Additional health probes
 ```bash
-# Liveness probe — is the Node.js process alive?
-curl https://api.promptgenie.app/api/v1/health/live
+# Liveness probe
+curl https://api.genieinprompt.app/api/v1/health/live
 
-# Readiness probe — is the app ready to accept traffic?
-curl https://api.promptgenie.app/api/v1/health/ready
+# Readiness probe
+curl https://api.genieinprompt.app/api/v1/health/ready
 ```
-Both return `HTTP 200` when healthy. These are the same endpoints your load balancer or Kubernetes liveness/readiness probes would call.
+Both should return `HTTP 200`.
 
-### WebSocket smoke test — confirms real-time chat is reachable
+### WebSocket smoke test
 ```bash
-# Check that nginx proxies the Socket.IO handshake (should return HTTP 200 or 400, never 404)
-curl -i https://api.promptgenie.app/socket.io/?EIO=4\&transport=polling
+curl -i "https://api.genieinprompt.app/socket.io/?EIO=4&transport=polling"
 ```
-Any response **other than 404** means nginx is correctly forwarding WebSocket traffic to the NestJS app. A `400 Bad Request` from Socket.IO is the expected response when no auth token is provided — that is correct.
+Any response other than 404 means nginx is correctly forwarding to the NestJS app. A `400 Bad Request` from Socket.IO (no auth token) is the expected result.
 
 ### What a broken deployment looks like
-- `curl: (6) Could not resolve host` → DNS has not propagated yet. Wait longer.
-- `SSL: no certificate` error → SSL was not issued. Re-run Step 10.
-- `502 Bad Gateway` from nginx → The NestJS app is not running. Check logs: `make logs SERVICE=app`
-- `{"status":"error"}` in health response → Database connection failed. Check your DB_PASSWORD in `.env` and confirm `promptgenie-postgres` is healthy.
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `Could not resolve host` | DNS not propagated | Wait longer |
+| SSL certificate error | SSL not issued | Re-run Step 10 |
+| `502 Bad Gateway` | NestJS app not running | `make logs SERVICE=app` |
+| `{"status":"error"}` in health | Database connection failed | Check `DB_PASSWORD` in `.env` |
 
 ---
 
 ## 14. Deploy the PWA to Vercel
 
-The Flutter web app (PWA) is deployed separately to Vercel's global CDN.
+The Flutter web app (PWA) is deployed to Vercel's global CDN.
 
 ### Step 14a — Create a Vercel account
 
@@ -1002,56 +905,47 @@ Go to [vercel.com](https://vercel.com) and sign up with your GitHub account.
 
 1. In Vercel, click **Add New → Project**.
 2. Select the `CIRCA-RL-GHANA/Flutter-Ready` repository.
-3. Vercel will detect `vercel.json` in the root and configure the build automatically (`flutter build web --release --web-renderer canvaskit`).
-4. Under **Environment Variables**, you only need to add optional services. No variables are required for the default deployment:
+3. Vercel detects `vercel.json` in the root and configures the build automatically.
+4. No environment variables are required for the default deployment.
 
-   | Variable | Value | Required? |
-   |---|---|---|
-   | `GOOGLE_MAPS_API_KEY` | Your AIza... key from Section 8.7 | Only if using Maps in the PWA |
-
-   > **Important — API domain is compiled in, not injected:** The Flutter app's backend URL is a compile-time constant defined in `thepg/lib/core/constants/env_config.dart` (hardcoded to `https://api.promptgenie.app/api/v1`). The `API_BASE_URL` variable in `vercel.json` sends a `--dart-define` flag to the build, but `env_config.dart` does **not** read it via `const String.fromEnvironment(...)`. Setting `API_BASE_URL` in the Vercel dashboard therefore has no effect on where the app points.
+   > **Note — API domain is a compile-time constant:** The Flutter app's backend URL is hardcoded in `thepg/lib/core/constants/env_config.dart` to `https://api.genieinprompt.app/api/v1`. The `API_BASE_URL` variable in `vercel.json` passes `--dart-define` to the build, but `env_config.dart` does **not** read it via `String.fromEnvironment(...)` — it uses a hard-coded value directly. Setting `API_BASE_URL` in the Vercel dashboard therefore has no effect.
    >
-   > **If you are deploying to a different backend domain**, edit `thepg/lib/core/constants/env_config.dart` directly — change the `production` case in both `baseUrl` (replace `https://api.promptgenie.app/api/v1`) and `webSocketUrl` (replace `wss://api.promptgenie.app`) — commit the change, then re-deploy.
-   >
-   > If you add `GOOGLE_MAPS_API_KEY` to Vercel and want it embedded in the web build, also add `--dart-define=GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}` to the `buildCommand` in `thepg/vercel.json`.
+   > **If you deploy to a different backend domain**, edit `thepg/lib/core/constants/env_config.dart` — change the `production` case in both `baseUrl` (replace `https://api.genieinprompt.app/api/v1`) and `webSocketUrl` (replace `wss://api.genieinprompt.app`) — commit the change, then redeploy.
 
-5. Click **Deploy**.
-
-The first deploy takes about 4 minutes to build the Flutter web app.
+5. Click **Deploy**. First deploy takes about 4 minutes.
 
 ### Step 14c — Configure your domain on Vercel
 
 1. In your Vercel project, go to **Settings → Domains**.
-2. Add `promptgenie.app`.
-3. Vercel will show you the DNS record to add. Go back to your domain registrar and add it:
+2. Add `genieinprompt.app`.
+3. Add the DNS record Vercel shows you at your domain registrar:
 
    | Type | Name | Value |
    |---|---|---|
    | CNAME | `@` | `cname.vercel-dns.com` |
    | or A | `@` | `76.76.19.61` |
 
-4. Back in Vercel, click **Verify**. Once green, your PWA is live at `https://promptgenie.app`.
+4. Back in Vercel, click **Verify**. Once green, your PWA is live at `https://genieinprompt.app`.
 
 ---
 
 ## 15. Set Up Automatic Deployments (GitHub Actions)
 
-Every time you push code to the `main` branch, GitHub will automatically deploy to your server. You need to add SSH credentials as GitHub Secrets.
+Every push to `main` deploys automatically. You need to add credentials as GitHub Secrets.
 
 ### Step 15a — Create a deployment SSH key (on your local machine)
 
 ```bash
-# Generate a NEW key pair just for deployments (do not reuse your personal key)
+# Generate a NEW key pair just for deployments — do not reuse your personal key
 ssh-keygen -t ed25519 -C "promptgenie-deploy" -f ~/.ssh/promptgenie_deploy
-
-# This creates two files:
-# ~/.ssh/promptgenie_deploy      ← private key (goes into GitHub)
-# ~/.ssh/promptgenie_deploy.pub  ← public key  (goes onto the server)
 ```
+
+This creates:
+- `~/.ssh/promptgenie_deploy` — private key (goes into GitHub)
+- `~/.ssh/promptgenie_deploy.pub` — public key (goes onto the server)
 
 ### Step 15b — Authorize the key on your server
 
-Copy the public key to the server:
 ```bash
 # From your local machine:
 ssh-copy-id -i ~/.ssh/promptgenie_deploy.pub promptgenie@YOUR_SERVER_IP
@@ -1059,78 +953,56 @@ ssh-copy-id -i ~/.ssh/promptgenie_deploy.pub promptgenie@YOUR_SERVER_IP
 
 If `ssh-copy-id` is not available (Windows):
 ```bash
-# From your local machine — prints the public key
+# Print the public key
 cat ~/.ssh/promptgenie_deploy.pub
-```
-Then on the server:
-```bash
+# Then on the server:
 echo "PASTE_PUBLIC_KEY_HERE" >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 ```
 
 ### Step 15c — Add secrets to GitHub
 
-> **Secrets vs Variables:** GitHub has two separate concepts.
-> - **Secrets** (`Settings → Secrets and variables → Actions → Secrets`) — encrypted values hidden from logs. Used for passwords, keys, tokens.
-> - **Variables** (`Settings → Secrets and variables → Actions → Variables`) — plain-text values visible in logs. Used for non-sensitive config like URLs.
+> **Secrets vs Variables:** Secrets (`Settings → Secrets and variables → Actions → Secrets`) are encrypted and hidden from logs. Variables (`Actions → Variables`) are plain-text and visible in logs. Use secrets for credentials; variables for non-sensitive config like URLs.
 
 #### Root repo & Backend repo — Backend deployment secrets
 
-1. Go to `github.com/CIRCA-RL-GHANA/Root` → **Settings → Secrets and variables → Actions**.
-2. Click **New repository secret** and add each of the following:
+Add these to both `github.com/CIRCA-RL-GHANA/Root` and `github.com/CIRCA-RL-GHANA/NestJs-Ready`:
 
-   | Secret name | Value |
-   |---|---|
-   | `DEPLOY_HOST` | Your server IP address, e.g. `123.45.67.89` |
-   | `DEPLOY_USER` | `promptgenie` |
-   | `DEPLOY_SSH_KEY` | Contents of `~/.ssh/promptgenie_deploy` (the private key — starts with `-----BEGIN OPENSSH PRIVATE KEY-----`) |
-   | `DEPLOY_PORT` | `22` |
-
-3. Repeat the same 4 secrets for `github.com/CIRCA-RL-GHANA/NestJs-Ready` (the backend repo has its own CI pipeline).
+| Secret name | Value |
+|---|---|
+| `DEPLOY_HOST` | Your server IP, e.g. `72.61.17.215` |
+| `DEPLOY_USER` | `promptgenie` |
+| `DEPLOY_SSH_KEY` | Contents of `~/.ssh/promptgenie_deploy` (starts with `-----BEGIN OPENSSH PRIVATE KEY-----`) |
+| `DEPLOY_PORT` | `22` |
 
 #### Flutter repo — Web (Vercel) secrets
 
-Go to `github.com/CIRCA-RL-GHANA/Flutter-Ready` → **Settings → Secrets and variables → Actions** and add:
+Add to `github.com/CIRCA-RL-GHANA/Flutter-Ready`:
 
-   | Secret name | Value | How to get it |
-   |---|---|---|
-   | `VERCEL_TOKEN` | Vercel API token | vercel.com → Settings → Tokens → Create |
-   | `VERCEL_ORG_ID` | Vercel org/team ID | vercel.com → Settings → General → scroll to Team ID |
-   | `VERCEL_PROJECT_ID` | Vercel project ID | Your Vercel project → Settings → General → scroll to Project ID |
+| Secret name | Value | How to get it |
+|---|---|---|
+| `VERCEL_TOKEN` | Vercel API token | vercel.com → Settings → Tokens → Create |
+| `VERCEL_ORG_ID` | Vercel org/team ID | vercel.com → Settings → General → Team ID |
+| `VERCEL_PROJECT_ID` | Vercel project ID | Vercel project → Settings → General → Project ID |
 
-Also add these **Variables** (not secrets) under the same Actions settings page:
+Also add these **Variables** (not secrets):
 
-   | Variable name | Value | Notes |
-   |---|---|---|
-   | `API_BASE_URL` | `https://api.promptgenie.app` | Passed as `--dart-define` to the Flutter build. Has no effect on the compiled app (see Step 14b note), but the CI workflow requires this variable to be set. |
-   | `VERCEL_URL` | `https://promptgenie.app` | Used by the post-deploy smoke test in CI |
+| Variable name | Value |
+|---|---|
+| `API_BASE_URL` | `https://api.genieinprompt.app` |
+| `VERCEL_URL` | `https://genieinprompt.app` |
 
 #### Flutter repo — Android signing secrets
 
-The Android CI build signs the app with your release keystore. You must create this keystore first.
-
-**On your local machine, generate the keystore:**
+**Generate the keystore (once on your local machine):**
 ```bash
-# Run in Git Bash / Terminal (requires Java 17 JDK — install from adoptium.net if not present)
-# Flutter 3.22 requires Java 17 or higher; earlier versions will produce a build error.
 keytool -genkey -v \
   -keystore promptgenie-release.jks \
-  -keyalg RSA \
-  -keysize 2048 \
-  -validity 10000 \
-  -alias promptgenie \
-  -storetype JKS
+  -keyalg RSA -keysize 2048 -validity 10000 \
+  -alias promptgenie -storetype JKS
 ```
 
-When prompted:
-- **Keystore password:** choose a strong password and save it
-- **Key password:** choose another strong password (can be the same)
-- **First and last name:** your name or org name
-- **Organizational unit, Organization, City, State, Country:** fill in as appropriate
-
-This generates `promptgenie-release.jks` in your current directory.
-
-**Base64-encode it for GitHub:**
+**Base64-encode for GitHub:**
 ```bash
 # Mac / Linux
 base64 -i promptgenie-release.jks | tr -d '\n'
@@ -1139,123 +1011,68 @@ base64 -i promptgenie-release.jks | tr -d '\n'
 base64 -w 0 promptgenie-release.jks
 ```
 
-Copy the entire output (a long single-line string).
-
-**Copy the keystore file to the right place:**
+**Copy to the correct location (gitignored):**
 ```bash
 cp promptgenie-release.jks thepg/android/keystore/promptgenie-release.jks
-# (This file is gitignored — it will NOT be committed)
 ```
 
 **Add secrets to the Flutter repo:**
 
-   | Secret name | Value |
-   |---|---|
-   | `ANDROID_KEYSTORE_BASE64` | The base64 string from above |
-   | `ANDROID_KEYSTORE_PASSWORD` | The keystore password you chose |
-   | `ANDROID_KEY_PASSWORD` | The key password you chose |
-   | `ANDROID_KEY_ALIAS` | `promptgenie` |
+| Secret name | Value |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | The base64 string above |
+| `ANDROID_KEYSTORE_PASSWORD` | The keystore password you chose |
+| `ANDROID_KEY_PASSWORD` | The key password you chose |
+| `ANDROID_KEY_ALIAS` | `promptgenie` |
 
 #### Flutter repo — iOS signing secrets
 
-iOS signing requires an Apple Developer account ($99/year) and a valid distribution certificate. This is only needed to publish to the App Store. **Skip this section if you are not targeting iOS yet.**
+Only needed for App Store publishing. Requires an Apple Developer account ($99/year).
 
-1. **Create an Apple Developer account** at [developer.apple.com](https://developer.apple.com) → Enroll → Individual or Organization.
+1. Create a distribution certificate at [developer.apple.com](https://developer.apple.com) → Certificates, IDs & Profiles.
+2. Export as `.p12` from Keychain Access, then base64-encode: `base64 -i YourCert.p12 | tr -d '\n'`
+3. Create an App Store Connect API key at [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → Users and Access → Keys.
+4. Update `thepg/ios/ExportOptions.plist` with your Apple Team ID.
 
-2. **Create a distribution certificate:**
-   - Log in to [developer.apple.com/account](https://developer.apple.com/account) → Certificates, IDs & Profiles → Certificates.
-   - Click `+` → Choose **Apple Distribution**.
-   - Follow the CSR (Certificate Signing Request) instructions.
-   - Download the `.cer` file and double-click to install in Keychain Access.
-   - Export from Keychain as `.p12` with a password.
+| Secret name | Value |
+|---|---|
+| `IOS_CERTIFICATE_BASE64` | Base64-encoded `.p12` |
+| `IOS_CERTIFICATE_PASSWORD` | `.p12` export password |
+| `APPSTORE_ISSUER_ID` | Issuer ID from App Store Connect |
+| `APPSTORE_API_KEY_ID` | Key ID from App Store Connect |
+| `APPSTORE_API_PRIVATE_KEY` | Raw contents of the `.p8` file |
 
-3. **Base64-encode the certificate:**
-   ```bash
-   base64 -i YourCertificate.p12 | tr -d '\n'
-   ```
-
-4. **Create an App Store Connect API key:**
-   - Go to [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → Users and Access → Keys → Integrations → App Store Connect API.
-   - Click `+` → Name it `promptgenie-ci` → Role: **App Manager**.
-   - Download the `.p8` file (shown only once).
-   - Note the **Issuer ID** (shown at the top of the Keys page) and **Key ID**.
-
-5. **Update `thepg/ios/ExportOptions.plist`** with your Apple Team ID:
-   ```bash
-   # Find your Team ID at developer.apple.com → Account → Membership
-   # Edit the file and replace YOUR_TEAM_ID with your real Team ID
-   nano thepg/ios/ExportOptions.plist
-   ```
-
-6. **Add secrets to the Flutter repo:**
-
-   | Secret name | Value |
-   |---|---|
-   | `IOS_CERTIFICATE_BASE64` | Base64 string from step 3 |
-   | `IOS_CERTIFICATE_PASSWORD` | Password you used when exporting the `.p12` |
-   | `APPSTORE_ISSUER_ID` | Issuer ID from App Store Connect |
-   | `APPSTORE_API_KEY_ID` | Key ID from App Store Connect |
-   | `APPSTORE_API_PRIVATE_KEY` | Raw contents of the `.p8` file (open in a text editor and paste) |
-
-> **Important — TestFlight, not direct App Store:** The CI pipeline uploads the iOS build to **TestFlight**, not directly to the App Store production listing. After a successful CI run:
-> 1. Open [App Store Connect](https://appstoreconnect.apple.com) → your app → **TestFlight**.
-> 2. Wait for the build to finish processing (usually 5–15 minutes).
-> 3. To publish to the App Store: go to **App Store → + Version**, select the TestFlight build, fill in release notes, and submit for Apple review.
-> Apple review typically takes 1–2 days on first submission.
+> CI uploads to **TestFlight**. After processing (5–15 min), promote in App Store Connect → App Store → + Version → select the build → submit for review (1–2 days).
 
 #### Flutter repo — Google Play secrets
 
-Required to automatically publish Android builds to the Play Store. **Skip if not publishing to Google Play yet.**
+Only needed for Play Store publishing. Requires a Google Play Console account ($25 one-time fee).
 
-1. **Create a Google Play Console account** at [play.google.com/console](https://play.google.com/console) ($25 one-time fee).
+1. Create an app in Play Console with package name `com.promptgenie.app`.
+2. Create a service account in the linked Google Cloud project with the **Release Manager** role.
+3. Download the service account JSON key.
 
-2. **Create an app** → name it *PROMPT Genie* → package name `com.promptgenie.app`.
+| Secret name | Value |
+|---|---|
+| `GOOGLE_PLAY_SERVICE_ACCOUNT` | Full contents of the JSON key file |
 
-3. **Create a service account for CI uploads:**
-   - In Play Console, go to **Setup → API access → Link to a Google Cloud project**.
-   - In the linked Google Cloud project, go to **IAM & Admin → Service Accounts → Create Service Account**.
-   - Name it `promptgenie-ci`, click Create.
-   - Grant the role: **Service Account User**.
-   - Click Done → click the service account → **Keys → Add Key → Create new key → JSON**.
-   - Download the JSON file.
+> CI uploads to the **internal testing track**. Promote to production manually in Play Console.
 
-4. **Grant the service account release access:**
-   - Back in Play Console → **Setup → API access** → find your new service account → **Grant access**.
-   - Set permissions: **Release** → **Release manager** (for internal/alpha/beta tracks).
+### Step 15d — Test the pipeline
 
-5. **Add the secret to the Flutter repo:**
-
-   | Secret name | Value |
-   |---|---|
-   | `GOOGLE_PLAY_SERVICE_ACCOUNT` | Entire contents of the JSON file you downloaded |
-
-> **Important — Play Store release track:** The CI pipeline uploads to the **internal testing track**, not directly to production. After the first CI run deposits a build in Play Console, you need to manually promote it:
-> 1. Open [Play Console](https://play.google.com/console) → your app → **Testing → Internal testing**.
-> 2. Verify the build looks correct and passes the pre-launch report.
-> 3. Go to **Production → Releases → Create new release**, select the AAB from Internal testing, and submit it for review.
-> Subsequent CI builds go to Internal testing automatically; you control promotion to Production.
-
-### Step 15d — Test it
-
-> **Pre-requisite:** Make sure you have completed **Step 12a** (AI participant pre-seed) and **Step 12b** (`make migrate-prod`) before triggering CI. The backend CI workflow attempts `npm run migration:run` on each push, but this command requires `ts-node` which is not present in the production Docker image — so the CI migration step **silently fails**. This is not harmful once migrations have been applied manually (TypeORM is idempotent), but it means you should never rely on CI to apply migrations. **Always run `make migrate-prod` manually on the server when a deployment includes new migration files**.
-
-Push any small change (e.g. add a blank line to `README.md`) to the `main` branch:
-
+Push any small change to `main`:
 ```bash
-# On your local machine, in the root repo directory
 echo "" >> README.md
 git add README.md
 git commit -m "test: trigger CI/CD pipeline"
 git push origin main
 ```
 
-Go to `github.com/CIRCA-RL-GHANA/Root` → **Actions** tab. You should see a workflow run start within 10 seconds. It will lint, test, rsync code to the server, and deploy — taking about 4–6 minutes total.
+Go to your repo → **Actions** tab. The workflow should start within 10 seconds and complete in 4–6 minutes.
 
 ---
 
 ## 16. Set Up Automated Database Backups
-
-Run this once on the server to create daily automatic database backups.
 
 ```bash
 # Create the backups directory
@@ -1266,7 +1083,7 @@ sudo chown promptgenie:promptgenie /backups
 crontab -e
 ```
 
-Add these two lines at the bottom, then save:
+Add these lines, then save:
 
 ```cron
 # Daily database backup at 2am UTC
@@ -1274,11 +1091,12 @@ Add these two lines at the bottom, then save:
 
 # Delete backups older than 30 days
 0 3 * * * find /backups -name "db_*.sql" -mtime +30 -delete
+
+# Weekly uploads backup (Sundays at 3:30am UTC)
+30 3 * * 0 docker run --rm -v promptgenie_app_uploads:/source:ro -v /backups:/backup alpine tar -czf /backup/uploads_$(date +\%Y\%m\%d).tar.gz -C /source . 2>&1
 ```
 
-**Save:** In nano, press `Ctrl+O` → Enter → `Ctrl+X`.
-
-**Test it manually right now:**
+**Test the database backup manually:**
 ```bash
 docker compose -f /opt/promptgenie/docker-compose.prod.yml exec -T postgres \
   pg_dump -U postgres promptgenie_prod > /backups/test_backup.sql
@@ -1287,21 +1105,7 @@ ls -lh /backups/test_backup.sql
 # Should show a file greater than 0 bytes
 ```
 
-### Back up the uploads directory
-
-User-uploaded files (avatars, documents) are stored in a **named Docker volume** (`promptgenie_app_uploads`). Docker named volumes do **not** live at a plain host path — they are managed by Docker at `/var/lib/docker/volumes/`. The correct way to back them up is to mount the volume into a temporary Alpine container:
-
-```bash
-crontab -e
-```
-
-Add this line:
-```cron
-# Weekly uploads backup (Sundays at 3:30am UTC)
-30 3 * * 0 docker run --rm -v promptgenie_app_uploads:/source:ro -v /backups:/backup alpine tar -czf /backup/uploads_$(date +\%Y\%m\%d).tar.gz -C /source . 2>&1
-```
-
-**Test it manually right now:**
+**Test the uploads backup:**
 ```bash
 docker run --rm \
   -v promptgenie_app_uploads:/source:ro \
@@ -1310,65 +1114,60 @@ docker run --rm \
   tar -czf /backup/test_uploads.tar.gz -C /source .
 
 ls -lh /backups/test_uploads.tar.gz
-# Non-zero size confirms the volume data is accessible
 ```
 
 **Restore uploads from backup (if needed):**
 ```bash
-# Stop the app first so nothing writes during restore
 docker compose -f /opt/promptgenie/docker-compose.prod.yml stop app
 
 docker run --rm \
   -v promptgenie_app_uploads:/dest \
   -v /backups:/backup \
   alpine \
-  tar -xzf /backup/uploads_20260101.tar.gz -C /dest
+  tar -xzf /backup/uploads_20260401.tar.gz -C /dest
 
-# Restart the app
 docker compose -f /opt/promptgenie/docker-compose.prod.yml start app
 ```
 
-> **How the volume name is derived:** Docker Compose names volumes as `<project>_<volume>`. With the app directory `/opt/promptgenie/`, Docker Compose uses `promptgenie` as the project name, making the uploads volume `promptgenie_app_uploads`. Confirm with: `docker volume ls | grep uploads`
+> The uploads volume name is `promptgenie_app_uploads`. Confirm with: `docker volume ls | grep uploads`
 
 ---
 
 ## 17. Final Go-Live Checklist
 
-Run through every item before announcing the app is live.
-
 ```
 INFRASTRUCTURE
 [ ] VPS server is running and accessible via SSH
 [ ] docker compose ps shows all 5 containers healthy
-[ ] Firewall only allows ports 22, 80, 443 (check with: sudo ufw status)
+[ ] Firewall only allows ports 22, 80, 443  →  sudo ufw status
 
 DNS
-[ ] api.promptgenie.app resolves to your server IP
-[ ] promptgenie.app resolves to Vercel
+[ ] api.genieinprompt.app resolves to your server IP
+[ ] genieinprompt.app resolves to Vercel
 
 SSL
-[ ] https://api.promptgenie.app shows padlock in browser
-[ ] https://promptgenie.app shows padlock in browser
+[ ] https://api.genieinprompt.app shows padlock in browser
+[ ] https://genieinprompt.app shows padlock in browser
 
 BACKEND API
 [ ] GET /api/v1/health returns HTTP 200 with status "ok"
 [ ] GET /api/v1/health shows database: "up"
 [ ] GET /api/v1/auth/me returns HTTP 401 (not 502)
-[ ] All 25 migrations present (psql query: SELECT name FROM migrations ORDER BY id; — should return 25 rows)
+[ ] All 25 migrations present (SELECT name FROM migrations ORDER BY id; — 25 rows)
 
 PWA
-[ ] https://promptgenie.app loads the app
-[ ] App can be added to home screen (PWA install prompt appears)
+[ ] https://genieinprompt.app loads the app
+[ ] App can be installed to home screen (PWA install prompt appears)
 [ ] Login flow works end-to-end with a real phone number
 
 SECURITY
 [ ] DB_SYNCHRONIZE=false in .env
 [ ] JWT_SECRET and JWT_REFRESH_SECRET are different values
-[ ] .env is NOT committed to git (run: git status — should not show .env)
-[ ] https://api.promptgenie.app/api/docs returns 404 (Swagger hidden in production)
+[ ] .env is NOT committed to git  →  git status (must not show .env)
+[ ] https://api.genieinprompt.app/api/docs returns 404 (Swagger hidden in production)
 
 CI/CD
-[ ] GitHub Actions run successfully on push to main
+[ ] GitHub Actions runs successfully on push to main
 [ ] A test push deploys without errors
 
 BACKUPS
@@ -1381,85 +1180,75 @@ BACKUPS
 ## 18. Troubleshooting Common Problems
 
 ### "Permission denied" when running SSH
-Your SSH key is not authorized. Re-run Step 15b. Make sure you are using the correct username (`promptgenie`, not `root`).
+Your SSH key is not authorized on the server. Re-run Step 15b. Ensure you are connecting as `promptgenie`, not `root`.
 
-### make deploy fails immediately — "Too many redirects" or nginx exits at startup
-nginx cannot find the SSL certificate. The cert paths in `nginx/nginx.conf` do not match where Certbot stored the certificate. On the server:
+### make deploy fails — nginx exits at startup
+nginx cannot find the SSL certificate. The cert paths in `nginx/nginx.conf` do not match where Certbot stored them.
 ```bash
 # Check where the cert actually lives
 ls /opt/promptgenie/certbot/conf/live/
-# Note the directory name shown (e.g. api.promptgenie.app)
 
-# Patch nginx.conf to match
-DOMAIN=api.promptgenie.app   # ← replace with the directory name shown above
+# Patch to match (replace api.genieinprompt.app with the directory name shown above if different)
+DOMAIN=api.genieinprompt.app
 sed -i "s|/etc/letsencrypt/live/[^/]*/fullchain.pem|/etc/letsencrypt/live/${DOMAIN}/fullchain.pem|g" /opt/promptgenie/nginx/nginx.conf
 sed -i "s|/etc/letsencrypt/live/[^/]*/privkey.pem|/etc/letsencrypt/live/${DOMAIN}/privkey.pem|g" /opt/promptgenie/nginx/nginx.conf
-
-# Then redeploy
 make deploy
 ```
 
-### make deploy fails immediately — "DEPLOY_HOST not set"
-This only matters for CI. On the server itself, you run `make deploy` directly — it does not need that variable.
-
-### CI pipeline fails — "No such secret" or deployment step is skipped silently
-The GitHub Actions workflows expect secrets named exactly `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, and `DEPLOY_PORT`. The `vps-init.sh` script's end-of-run summary incorrectly prints `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT`. If you followed those printed names, the secrets are named incorrectly. Delete them and recreate with the correct names (see Step 15c).
+### CI pipeline fails — deployment step is skipped silently
+The workflows expect secrets named exactly `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, and `DEPLOY_PORT`. The `vps-init.sh` script end-of-run summary incorrectly prints `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT`. Delete any incorrectly named secrets and recreate with the correct names (see Step 15c).
 
 ### make deploy fails — "environment variable is not set or has default value"
-The `deploy.sh` preflight check detected that one of `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, or `PIN_ENCRYPTION_KEY` is empty or still contains a `CHANGE_ME` placeholder. Open `.env` and fill in all real values for those four variables.
+The preflight check detected that `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, or `PIN_ENCRYPTION_KEY` is empty or still a placeholder. Open `.env` and fill in real values.
 
 ### Docker build fails with "npm ERR! code ENOTFOUND"
-The Docker container cannot reach the internet. Check your server's DNS: `cat /etc/resolv.conf`. Should show `nameserver 8.8.8.8` or similar. If missing: `echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf`
+The Docker container cannot reach the internet. Check DNS: `cat /etc/resolv.conf`. If `nameserver` is missing:
+```bash
+echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
+```
 
 ### "502 Bad Gateway" from Nginx
-The NestJS app is not running or is still starting up. Wait 30 seconds and try again. If it persists:
+The NestJS app is not running. Check logs:
 ```bash
 make logs SERVICE=app
 ```
-Look for the error in the last 50 lines. Common causes:
-- Missing required `.env` variable: app logs will say `ConfigValidationError`
-- Port conflict: something else is using port 3000
+Common causes: missing required `.env` variable (`ConfigValidationError` in logs) or port conflict.
 
 ### Health check shows `database: "down"`
-PostgreSQL is not reachable from the app container.
+PostgreSQL is not reachable.
 ```bash
 docker compose -f docker-compose.prod.yml ps
-```
-Check that `promptgenie-postgres` shows `healthy`. If it shows `starting`:
-```bash
 make logs SERVICE=postgres
 ```
-Common cause: wrong `DB_PASSWORD` — the app's password does not match what PostgreSQL was initialised with. Fix: shut everything down, delete the postgres volume (data will be lost), and redeploy.
+Common cause: `DB_PASSWORD` in `.env` does not match what PostgreSQL was initialised with. To fix (will **delete all data**):
 ```bash
-docker compose -f docker-compose.prod.yml down -v    # WARNING: deletes all data
+docker compose -f docker-compose.prod.yml down -v
 make deploy
 make migrate-prod
 ```
 
-### SSL certificate fails — "too many redirects" or "challenge failed"
-DNS has not propagated yet. Wait longer, then:
+### SSL certificate fails
+DNS has not propagated yet. Wait, then:
 ```bash
-nslookup api.promptgenie.app    # must return your server IP
-make ssl DOMAIN=api.promptgenie.app EMAIL=your@email.com
+nslookup api.genieinprompt.app   # must return your server IP
+make ssl DOMAIN=api.genieinprompt.app EMAIL=your@email.com
 ```
 
 ### Migrations fail — "relation already exists"
-Part of the database was already created. Check which migrations have been applied:
+Already-applied migrations are tracked in the `migrations` table and TypeORM skips them automatically. If there is a genuine conflict, check which migrations have been applied:
 ```bash
 export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
 docker compose -f docker-compose.prod.yml exec -T postgres \
   psql -U "$DB_USERNAME" -d "$DB_NAME" \
   -c "SELECT name FROM migrations ORDER BY id;"
 ```
-Already-applied migrations are tracked in the `migrations` table and TypeORM will skip them automatically on re-run. If you see a genuine conflict that TypeORM cannot resolve, contact your backend developer with the full error message.
 
-### Migrations fail — "violates foreign key constraint" on `q_point_market_balances`
-Migration #13 (`CreateQPointsMarketTables`) tried to insert the AI participant's balance row before the matching `users` row existed. Return to **Step 12a** and run the AI participant INSERT, then re-run migrations:
+### Migrations fail — "violates foreign key constraint" on q_point_market_balances
+Migration #13 ran before the AI participant user was inserted. Return to **Step 12a** and run the SQL INSERT, then:
 ```bash
-# Re-run migrations — TypeORM will skip already-applied ones
 make migrate-prod
 ```
-If the migration itself was partially applied and left the database in an inconsistent state, you may need to drop the affected tables manually and re-run. In the worst case, recreate the database from scratch with:
+If the database is in an inconsistent state:
 ```bash
 export $(grep -E '^(DB_USERNAME|DB_NAME)=' .env | xargs)
 docker compose -f docker-compose.prod.yml exec -T postgres \
@@ -1467,26 +1256,24 @@ docker compose -f docker-compose.prod.yml exec -T postgres \
 # Then re-run Step 12a, then Step 12b
 ```
 
-### Vercel build fails — "Flutter version not found"
-The `vercel.json` in the Flutter repo pins `flutter-version: 3.22.0`. Make sure you have not changed that value. If Vercel uses an environment variable for it, ensure it matches.
-
 ### "Too many login attempts" — SSH locked out
-fail2ban banned your IP after too many failed SSH attempts. From a different IP or your hosting provider's web console:
+fail2ban banned your IP. From a different IP or your hosting provider's web console:
 ```bash
 sudo fail2ban-client set sshd unbanip YOUR_IP
 ```
+
+### Vercel build fails — "Flutter version not found"
+The `vercel.json` build command pins Flutter 3.22.0. Confirm you have not altered the `buildCommand` in `thepg/vercel.json`.
 
 ---
 
 ## Quick Reference — Ongoing Operations
 
-Once live, these are the commands you will use most often:
-
 ```bash
 # View live application logs
 make logs SERVICE=app
 
-# Check all container statuses and resource usage
+# Check container statuses and resource usage
 make status
 
 # Deploy a new code version (after git pull)
@@ -1495,7 +1282,7 @@ make deploy
 # Run new migrations after a code update
 make migrate-prod
 
-# Restart just the app (without touching the database)
+# Restart just the app container
 docker compose -f docker-compose.prod.yml restart app
 
 # Restart everything
@@ -1505,7 +1292,7 @@ docker compose -f docker-compose.prod.yml up -d
 # Rollback app to the previous image (does not revert migrations)
 make rollback
 
-# Run pre-deployment preflight checks only (without deploying)
+# Run preflight checks only (no deployment)
 make preflight
 
 # Manual database backup
@@ -1513,12 +1300,12 @@ docker compose -f docker-compose.prod.yml exec postgres \
   pg_dump -U postgres promptgenie_prod > /backups/manual_$(date +%Y%m%d_%H%M%S).sql
 
 # Check SSL certificate expiry
-echo | openssl s_client -servername api.promptgenie.app \
-  -connect api.promptgenie.app:443 2>/dev/null | \
+echo | openssl s_client -servername api.genieinprompt.app \
+  -connect api.genieinprompt.app:443 2>/dev/null | \
   openssl x509 -noout -dates
 ```
 
 ---
 
-*For full environment variable reference see [ENVIRONMENT.md](ENVIRONMENT.md).  
+*For full environment variable reference see [ENVIRONMENT.md](ENVIRONMENT.md).
 For full deployment operations reference see [DEPLOYMENT.md](DEPLOYMENT.md).*
