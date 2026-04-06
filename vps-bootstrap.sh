@@ -23,8 +23,8 @@ step()  { echo -e "\n${BLUE}▶ $*${NC}"; }
 # ── Config ────────────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/CIRCA-RL-GHANA/Root.git"
 REPO_BRANCH="main"
-DEPLOY_DIR="/opt/promptgenie"
-COMPOSE_FILE="docker-compose.prod.yml"
+DEPLOY_DIR="/docker/root"
+COMPOSE_FILE="docker-compose.yml"
 
 # ── Root check ────────────────────────────────────────────────────────────────
 if [[ $EUID -ne 0 ]]; then
