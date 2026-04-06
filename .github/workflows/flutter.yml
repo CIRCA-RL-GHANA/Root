@@ -19,6 +19,10 @@ defaults:
   run:
     working-directory: thepg
 
+concurrency:
+  group: flutter-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   FLUTTER_VERSION: '3.22.0'
   JAVA_VERSION: '17'
