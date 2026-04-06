@@ -2,7 +2,6 @@
 # Production Docker Compose - PROMPT Genie Full Stack
 # Includes: NestJS Backend, PostgreSQL, Redis, Nginx Reverse Proxy
 # ============================================
-version: '3.8'
 
 services:
   # ---- Nginx Reverse Proxy ----
