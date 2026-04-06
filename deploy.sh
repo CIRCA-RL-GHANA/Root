@@ -33,6 +33,11 @@ if [ ! -f "$COMPOSE_FILE" ]; then
     exit 1
 fi
 
+if [ ! -f ".env" ]; then
+    echo -e "${RED}✗ Root .env file not found (copy .env.example to .env and fill in secrets)${NC}"
+    exit 1
+fi
+
 if [ ! -f "orionstack-backend--main/.env" ]; then
     echo -e "${RED}✗ Backend .env file not found${NC}"
     exit 1
