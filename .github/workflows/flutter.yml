@@ -14,6 +14,7 @@ on:
     branches: [main]
     paths:
       - 'thepg/**'
+  workflow_dispatch:
 
 defaults:
   run:
@@ -34,10 +35,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Flutter source
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          repository: CIRCA-RL-GHANA/Flutter-Ready
           token: ${{ secrets.GH_PAT }}
+          path: thepg
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -70,10 +73,12 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Flutter source
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          repository: CIRCA-RL-GHANA/Flutter-Ready
           token: ${{ secrets.GH_PAT }}
+          path: thepg
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -138,10 +143,12 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Flutter source
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          repository: CIRCA-RL-GHANA/Flutter-Ready
           token: ${{ secrets.GH_PAT }}
+          path: thepg
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -196,10 +203,12 @@ jobs:
     environment: production
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Flutter source
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          repository: CIRCA-RL-GHANA/Flutter-Ready
           token: ${{ secrets.GH_PAT }}
+          path: thepg
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2

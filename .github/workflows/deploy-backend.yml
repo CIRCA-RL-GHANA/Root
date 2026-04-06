@@ -24,7 +24,12 @@ jobs:
         working-directory: orionstack-backend--main
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout backend source
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/NestJs-Ready
+          token: ${{ secrets.GH_PAT }}
+          path: orionstack-backend--main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,8 +54,15 @@ jobs:
     environment: production
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Root repository
         uses: actions/checkout@v4
+
+      - name: Checkout backend source
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/NestJs-Ready
+          token: ${{ secrets.GH_PAT }}
+          path: orionstack-backend--main
 
       # ── Copy code to VPS via rsync ──────────────────────────────────────────
       - name: Configure SSH key

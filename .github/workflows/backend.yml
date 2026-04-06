@@ -18,14 +18,11 @@ on:
     branches: [main]
     paths:
       - 'orionstack-backend--main/**'
+  workflow_dispatch:
 
 concurrency:
   group: backend-${{ github.ref }}
   cancel-in-progress: false
-
-defaults:
-  run:
-    working-directory: orionstack-backend--main
 
 env:
   NODE_VERSION: '18'
@@ -35,6 +32,10 @@ jobs:
   test:
     name: Lint & Test
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: orionstack-backend--main
 
     services:
       postgres:
@@ -62,10 +63,12 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout backend source
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          repository: CIRCA-RL-GHANA/NestJs-Ready
           token: ${{ secrets.GH_PAT }}
+          path: orionstack-backend--main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -121,11 +124,15 @@ jobs:
     environment: production
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Root repository
+        uses: actions/checkout@v4
+
+      - name: Checkout backend source
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          repository: CIRCA-RL-GHANA/NestJs-Ready
           token: ${{ secrets.GH_PAT }}
+          path: orionstack-backend--main
 
       # ── SSH setup ─────────────────────────────────────────────────────────
       - name: Configure SSH
