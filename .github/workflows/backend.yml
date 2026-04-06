@@ -63,6 +63,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -120,6 +122,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: false
 
       # ── SSH setup ─────────────────────────────────────────────────────────
       - name: Configure SSH
@@ -134,11 +138,14 @@ jobs:
         run: |
           rsync -avz --delete \
             --exclude='.git' \
+            --exclude='.env' \
             --exclude='thepg' \
             --exclude='node_modules' \
             --exclude='**/dist' \
             --exclude='**/.dart_tool' \
             --exclude='**/*.log' \
+            --exclude='certbot/' \
+            --exclude='orionstack-backend--main/uploads/' \
             -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.DEPLOY_PORT || 22 }} -o StrictHostKeyChecking=yes" \
             ./ ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST || '72.61.17.215' }}:/opt/promptgenie/
 
@@ -155,8 +162,56 @@ jobs:
             set -euo pipefail
             cd /opt/promptgenie
 
-            echo "=== [1/4] Building new app image on VPS ==="
-            docker compose -f docker-compose.prod.yml build --no-cache app
+            # ── Ensure required secrets are non-empty in .env ──────────────
+            # docker-compose.prod.yml uses ${VAR:?} guards; an empty value
+            # causes compose to abort before any container is created.
+            _fill_secret() {
+              local key="$1" len="${2:-32}"
+              local current
+              current=$(grep -E "^${key}=" .env 2>/dev/null | cut -d'=' -f2- | tr -d '[:space:]' || true)
+              if [[ -z "$current" || "$current" == your-* || "$current" == *change-in-production* ]]; then
+                local val
+                val=$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c "${len}")
+                if grep -qE "^${key}=" .env 2>/dev/null; then
+                  sed -i "s|^${key}=.*|${key}=${val}|" .env
+                else
+                  echo "${key}=${val}" >> .env
+                fi
+                echo "  [env] ${key} auto-generated."
+              fi
+            }
+            _fill_b64_secret() {
+              local key="$1"
+              local current
+              current=$(grep -E "^${key}=" .env 2>/dev/null | cut -d'=' -f2- | tr -d '[:space:]' || true)
+              if [[ -z "$current" || "$current" == your-* || "$current" == *change-in-production* ]]; then
+                local val
+                val=$(openssl rand -base64 64 | tr -d '\n')
+                if grep -qE "^${key}=" .env 2>/dev/null; then
+                  sed -i "s|^${key}=.*|${key}=${val}|" .env
+                else
+                  echo "${key}=${val}" >> .env
+                fi
+                echo "  [env] ${key} auto-generated."
+              fi
+            }
+            if [[ ! -f .env ]]; then
+              cp .env.example .env
+              echo "  [env] .env created from .env.example."
+            fi
+            _fill_secret       REDIS_PASSWORD        32
+            _fill_secret       DB_PASSWORD           32
+            _fill_b64_secret   JWT_SECRET
+            _fill_b64_secret   JWT_REFRESH_SECRET
+            REDIS_PW=$(grep -E "^REDIS_PASSWORD=" .env | cut -d'=' -f2- | tr -d '[:space:]')
+            if [[ -z "$REDIS_PW" ]]; then
+              echo "ERROR: REDIS_PASSWORD is still empty — cannot start redis." >&2
+              exit 1
+            fi
+            echo "=== Secrets OK ==="
+
+            echo "=== [1/4] Pulling latest app image ==="
+            docker compose -f docker-compose.prod.yml pull app
 
             echo "=== [2/4] Ensuring DB + Redis are up ==="
             docker compose -f docker-compose.prod.yml up -d postgres redis

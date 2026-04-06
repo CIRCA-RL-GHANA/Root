@@ -89,26 +89,53 @@ if [[ -f ".env" ]]; then
 else
   if [[ -f ".env.example" ]]; then
     cp .env.example .env
-    warn ".env created from .env.example."
-    warn "⚠  IMPORTANT: Edit ${DEPLOY_DIR}/.env and fill in your secrets before the stack"
-    warn "   will work correctly (DB passwords, JWT secrets, API keys, etc.)."
-    warn ""
-    warn "   Minimum required changes:"
-    warn "     DB_PASSWORD       – set a strong password"
-    warn "     REDIS_PASSWORD    – set a strong password"
-    warn "     JWT_SECRET        – run: openssl rand -base64 64"
-    warn "     JWT_REFRESH_SECRET – run: openssl rand -base64 64"
-    warn ""
-    warn "   Press ENTER to continue with placeholder values (only for testing),"
-    warn "   or Ctrl-C now and edit .env first, then re-run this script."
-    # Only prompt interactively when stdin is a terminal
-    if [[ -t 0 ]]; then
-      read -r -p ""
-    fi
+    info ".env created from .env.example."
   else
     error ".env.example not found. Cannot scaffold .env — aborting."
   fi
 fi
+
+# ── Auto-fill any empty required secrets ──────────────────────────────────────
+# Docker Compose uses ${VAR:?msg} for REDIS_PASSWORD and DB_PASSWORD, so they
+# MUST be non-empty or the stack will refuse to start.  Generate values with
+# openssl when the current value is missing or blank.
+_fill_secret() {
+  local key="$1" len="${2:-32}"
+  local current
+  current=$(grep -E "^${key}=" .env | cut -d'=' -f2- | tr -d '[:space:]')
+  if [[ -z "$current" || "$current" == your-* || "$current" == *change-in-production* ]]; then
+    local val
+    val=$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c "${len}")
+    # Replace the line in-place (handles both KEY= and KEY=placeholder forms)
+    sed -i "s|^${key}=.*|${key}=${val}|" .env
+    warn "  ${key} auto-generated (update .env to use your own value)."
+  fi
+}
+
+_fill_b64_secret() {
+  local key="$1"
+  local current
+  current=$(grep -E "^${key}=" .env | cut -d'=' -f2- | tr -d '[:space:]')
+  if [[ -z "$current" || "$current" == your-* || "$current" == *change-in-production* ]]; then
+    local val
+    val=$(openssl rand -base64 64 | tr -d '\n')
+    sed -i "s|^${key}=.*|${key}=${val}|" .env
+    warn "  ${key} auto-generated (update .env to use your own value)."
+  fi
+}
+
+warn "Checking required secrets in .env …"
+_fill_secret       REDIS_PASSWORD        32
+_fill_secret       DB_PASSWORD           32
+_fill_b64_secret   JWT_SECRET
+_fill_b64_secret   JWT_REFRESH_SECRET
+
+# Sanity-check: abort early if REDIS_PASSWORD is still empty (e.g. sed failed)
+REDIS_PW=$(grep -E "^REDIS_PASSWORD=" .env | cut -d'=' -f2- | tr -d '[:space:]')
+if [[ -z "$REDIS_PW" ]]; then
+  error "REDIS_PASSWORD is still empty after auto-fill. Edit ${DEPLOY_DIR}/.env manually and re-run."
+fi
+info "Required secrets are set."
 
 # ── 4. Bring the stack up ─────────────────────────────────────────────────────
 step "Starting services (docker compose up)"
