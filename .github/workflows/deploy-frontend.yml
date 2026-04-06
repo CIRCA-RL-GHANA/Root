@@ -27,8 +27,12 @@ jobs:
         working-directory: thepg
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Flutter source
         uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/Flutter-Ready
+          token: ${{ secrets.GH_PAT }}
+          path: thepg
 
       - name: Setup Flutter (stable)
         uses: subosito/flutter-action@v2

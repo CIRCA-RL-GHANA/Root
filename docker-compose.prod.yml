@@ -2,7 +2,6 @@
 # Production Docker Compose - PROMPT Genie Full Stack
 # Includes: NestJS Backend, PostgreSQL, Redis, Nginx Reverse Proxy
 # ============================================
-version: '3.8'
 
 services:
   # ---- Nginx Reverse Proxy ----
@@ -84,7 +83,7 @@ services:
     networks:
       - promptgenie-network
     healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" ping | grep PONG']
       interval: 10s
       timeout: 5s
       retries: 5

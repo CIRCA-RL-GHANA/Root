@@ -1,25 +1,130 @@
-# ============================================================
-# docker-compose.yml — Hostinger Docker Manager entry point
-#
-# Paste ONE of these URLs into Hostinger → Docker Manager:
-#   • GitHub repo  : https://github.com/CIRCA-RL-GHANA/Root
-#   • Raw file URL : https://raw.githubusercontent.com/CIRCA-RL-GHANA/Root/main/docker-compose.yml
-#
-# The backend image is pre-built by CI and stored in GHCR.
-# No local build step is required — just set the env vars
-# listed below (via Hostinger's "Environment Variables" UI or
-# a .env file on the VPS) and hit Deploy.
-#
-# Required secrets to configure in Hostinger before deploying:
-#   DB_PASSWORD         – PostgreSQL password
-#   REDIS_PASSWORD      – Redis password
-#   JWT_SECRET          – run: openssl rand -base64 64
-#   JWT_REFRESH_SECRET  – run: openssl rand -base64 64
-# ============================================================
-version: '3.8'
+configs:
+  nginx_main:
+    content: |
+      worker_processes auto;
+      error_log /var/log/nginx/error.log warn;
+      pid /var/run/nginx.pid;
+
+      events {
+          worker_connections 1024;
+          multi_accept on;
+          use epoll;
+      }
+
+      http {
+          include /etc/nginx/mime.types;
+          default_type application/octet-stream;
+
+          log_format main '$$remote_addr - $$remote_user [$$time_local] '
+                          '"$$request" $$status $$body_bytes_sent '
+                          '"$$http_referer" "$$http_user_agent" '
+                          '$$request_time $$upstream_response_time';
+          access_log /var/log/nginx/access.log main;
+
+          sendfile on;
+          tcp_nopush on;
+          tcp_nodelay on;
+          keepalive_timeout 65;
+          types_hash_max_size 2048;
+          client_max_body_size 20M;
+
+          gzip on;
+          gzip_vary on;
+          gzip_proxied any;
+          gzip_comp_level 6;
+          gzip_buffers 16 8k;
+          gzip_http_version 1.1;
+          gzip_min_length 256;
+          gzip_types
+              application/json
+              application/javascript
+              application/xml
+              text/css
+              text/javascript
+              text/plain
+              text/xml;
+
+          limit_req_zone $$binary_remote_addr zone=api:10m rate=30r/s;
+          limit_req_zone $$binary_remote_addr zone=auth:10m rate=5r/s;
+          limit_req_zone $$binary_remote_addr zone=static:10m rate=100r/s;
+
+          upstream nestjs_backend {
+              server app:3000 max_fails=3 fail_timeout=30s;
+              keepalive 32;
+          }
+
+          server {
+              listen 80;
+              server_name api.genieinprompt.app;
+
+              location /.well-known/acme-challenge/ {
+                  root /var/www/certbot;
+              }
+
+              location /health {
+                  access_log off;
+                  return 200 'OK';
+                  add_header Content-Type text/plain;
+              }
+
+              location / {
+                  return 301 https://$$host$$request_uri;
+              }
+          }
+
+          include /etc/nginx/conf.d/*.conf;
+      }
+
+  nginx_ip_fallback:
+    content: |
+      server {
+          listen 80;
+          server_name ${SERVER_IP:-72.61.17.215};
+
+          location /.well-known/acme-challenge/ {
+              root /var/www/certbot;
+          }
+
+          location = /health {
+              access_log off;
+              proxy_pass http://nestjs_backend/api/v1/health;
+              proxy_http_version 1.1;
+              proxy_set_header Host $$host;
+          }
+
+          location /api/ {
+              proxy_pass http://nestjs_backend;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade    $$http_upgrade;
+              proxy_set_header Connection 'upgrade';
+              proxy_set_header Host       $$host;
+              proxy_set_header X-Real-IP  $$remote_addr;
+              proxy_set_header X-Forwarded-For   $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout    90s;
+              proxy_send_timeout    90s;
+              proxy_connect_timeout 30s;
+          }
+
+          location /socket.io/ {
+              proxy_pass http://nestjs_backend;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade    $$http_upgrade;
+              proxy_set_header Connection "upgrade";
+              proxy_set_header Host       $$host;
+              proxy_set_header X-Real-IP  $$remote_addr;
+              proxy_set_header X-Forwarded-For   $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_read_timeout 86400s;
+              proxy_send_timeout 86400s;
+          }
+
+          location ~* /\. {
+              deny all;
+          }
+      }
 
 services:
-  # ── Nginx reverse proxy ────────────────────────────────────
   nginx:
     image: nginx:1.25-alpine
     container_name: promptgenie-nginx
@@ -27,11 +132,14 @@ services:
     ports:
       - '80:80'
       - '443:443'
+    configs:
+      - source: nginx_main
+        target: /etc/nginx/nginx.conf
+      - source: nginx_ip_fallback
+        target: /etc/nginx/conf.d/ip-fallback.conf
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./certbot/conf:/etc/letsencrypt:ro
-      - ./certbot/www:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
     depends_on:
       - app
     networks:
@@ -42,18 +150,16 @@ services:
       timeout: 5s
       retries: 3
 
-  # ── Certbot (SSL auto-renewal) ─────────────────────────────
   certbot:
     image: certbot/certbot:latest
     container_name: promptgenie-certbot
     volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - promptgenie-network
 
-  # ── PostgreSQL ─────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
     container_name: promptgenie-postgres
@@ -74,12 +180,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 1G
 
-  # ── Redis ──────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: promptgenie-redis
@@ -97,16 +198,11 @@ services:
     networks:
       - promptgenie-network
     healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" ping | grep PONG']
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 512M
 
-  # ── NestJS Backend (pre-built image from GHCR) ─────────────
   app:
     image: ghcr.io/circa-rl-ghana/root/promptgenie-backend:latest
     container_name: promptgenie-app
@@ -153,16 +249,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1.0'
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 5
-        window: 120s
 
 volumes:
   postgres_data:
@@ -172,6 +258,10 @@ volumes:
   app_logs:
     driver: local
   app_uploads:
+    driver: local
+  certbot_conf:
+    driver: local
+  certbot_www:
     driver: local
 
 networks:
