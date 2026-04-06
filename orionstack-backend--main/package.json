@@ -1,7 +1,7 @@
 {
   "name": "promptgenie-backend",
   "version": "1.0.0",
-  "description": "PromptGenie NestJS backend",
+  "description": "PromptGenie backend — Node.js HTTP server",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
