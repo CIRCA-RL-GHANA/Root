@@ -251,8 +251,8 @@ jobs:
       - name: API smoke test
         run: |
           sleep 5
-          STATUS=$(curl -sk -o /dev/null -w '%{http_code}' \
-            "https://${{ secrets.DEPLOY_HOST || '72.61.17.215' }}/api/v1/health" \
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+            "http://${{ secrets.DEPLOY_HOST || '72.61.17.215' }}/api/v1/health" \
             -H "Accept: application/json")
           echo "Health endpoint: HTTP $STATUS"
           [ "$STATUS" -eq 200 ] || { echo "::error::API health check failed (HTTP $STATUS)"; exit 1; }
