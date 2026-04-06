@@ -1,6 +1,22 @@
 # ============================================
 # Flutter CI/CD Pipeline
 # Test → Build Android/iOS/Web
+#
+# Triggers
+# ────────
+# • Push/PR to main touching this workflow file
+# • repository_dispatch event "flutter-deploy"
+#   → sent by CIRCA-RL-GHANA/Flutter-Ready after its tests pass:
+#
+#     - name: Trigger Root deployment
+#       uses: peter-evans/repository-dispatch@v3
+#       with:
+#         token: ${{ secrets.ROOT_DISPATCH_TOKEN }}   # PAT (repo scope)
+#         repository: CIRCA-RL-GHANA/Root
+#         event-type: flutter-deploy
+#
+#   Store ROOT_DISPATCH_TOKEN as a secret in Flutter-Ready.
+# • workflow_dispatch — manual trigger from Actions UI
 # ============================================
 name: Flutter CI/CD
 
@@ -13,6 +29,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/flutter.yml'
+  repository_dispatch:
+    types: [flutter-deploy]
   workflow_dispatch:
 
 defaults:
@@ -42,7 +60,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CIRCA-RL-GHANA/Flutter-Ready
-          token: ${{ secrets.GH_PAT }}
           path: thepg
 
       - name: Setup Flutter
@@ -85,7 +102,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CIRCA-RL-GHANA/Flutter-Ready
-          token: ${{ secrets.GH_PAT }}
           path: thepg
 
       - name: Setup Java
@@ -159,7 +175,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CIRCA-RL-GHANA/Flutter-Ready
-          token: ${{ secrets.GH_PAT }}
           path: thepg
 
       - name: Setup Flutter
@@ -223,7 +238,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CIRCA-RL-GHANA/Flutter-Ready
-          token: ${{ secrets.GH_PAT }}
           path: thepg
 
       - name: Setup Flutter
