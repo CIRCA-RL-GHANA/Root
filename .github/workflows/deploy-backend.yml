@@ -140,8 +140,8 @@ jobs:
             echo "=== [1/5] Pulling latest images ==="
             docker compose -f docker-compose.prod.yml pull --quiet
 
-            echo "=== [2/5] Building app image ==="
-            docker compose -f docker-compose.prod.yml build --no-cache app
+            echo "=== [2/5] Pulling latest app image ==="
+            docker compose -f docker-compose.prod.yml pull app
 
             echo "=== [3/5] Starting services ==="
             docker compose -f docker-compose.prod.yml up -d --remove-orphans postgres redis

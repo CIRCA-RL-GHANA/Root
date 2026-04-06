@@ -95,10 +95,7 @@ services:
 
   # ---- NestJS Backend Application ----
   app:
-    build:
-      context: ./orionstack-backend--main
-      dockerfile: Dockerfile
-      target: production
+    image: ghcr.io/circa-rl-ghana/root/promptgenie-backend:latest
     container_name: promptgenie-app
     restart: unless-stopped
     expose:
@@ -119,7 +116,7 @@ services:
     volumes:
       - app_logs:/app/logs
       - app_uploads:/app/uploads
-      - ./orionstack-backend--main/ml-models:/app/ml-models:ro
+      - app_ml_models:/app/ml-models
     networks:
       - promptgenie-network
     healthcheck:
@@ -147,6 +144,8 @@ volumes:
   app_logs:
     driver: local
   app_uploads:
+    driver: local
+  app_ml_models:
     driver: local
 
 networks:

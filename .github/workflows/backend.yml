@@ -210,8 +210,8 @@ jobs:
             fi
             echo "=== Secrets OK ==="
 
-            echo "=== [1/4] Building new app image on VPS ==="
-            docker compose -f docker-compose.prod.yml build --no-cache app
+            echo "=== [1/4] Pulling latest app image ==="
+            docker compose -f docker-compose.prod.yml pull app
 
             echo "=== [2/4] Ensuring DB + Redis are up ==="
             docker compose -f docker-compose.prod.yml up -d postgres redis
