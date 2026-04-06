@@ -1,3 +1,7 @@
-[submodule "thepg"]
-	path = thepg
-	url = https://github.com/CIRCA-RL-GHANA/Flutter-Ready.git
+# Source repositories for each component of this monorepo-style setup.
+# These are NOT active git submodules — CI checks them out explicitly at build
+# time using actions/checkout so that private repos (Flutter-Ready) can use a
+# PAT and public repos (NestJS-Ready) use GITHUB_TOKEN.
+#
+# Backend:  CIRCA-RL-GHANA/NestJS-Ready  → orionstack-backend--main/
+# Frontend: CIRCA-RL-GHANA/Flutter-Ready → thepg/

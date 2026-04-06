@@ -8,12 +8,12 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'thepg/**'
       - '.github/workflows/flutter.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'thepg/**'
+      - '.github/workflows/flutter.yml'
+  workflow_dispatch:
 
 defaults:
   run:
@@ -32,12 +32,18 @@ jobs:
   test:
     name: Analyze & Test
     runs-on: ubuntu-latest
-    if: hashFiles('thepg/pubspec.yaml') != ''
 
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Checkout Flutter frontend source (CIRCA-RL-GHANA/Flutter-Ready)
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/Flutter-Ready
+          token: ${{ secrets.GH_PAT }}
+          path: thepg
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -68,12 +74,19 @@ jobs:
     name: Build Android
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main' && hashFiles('thepg/pubspec.yaml') != ''
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Checkout Flutter frontend source (CIRCA-RL-GHANA/Flutter-Ready)
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/Flutter-Ready
+          token: ${{ secrets.GH_PAT }}
+          path: thepg
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -135,12 +148,19 @@ jobs:
     name: Build iOS
     runs-on: macos-latest
     needs: test
-    if: github.ref == 'refs/heads/main' && hashFiles('thepg/pubspec.yaml') != ''
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Checkout Flutter frontend source (CIRCA-RL-GHANA/Flutter-Ready)
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/Flutter-Ready
+          token: ${{ secrets.GH_PAT }}
+          path: thepg
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -191,13 +211,20 @@ jobs:
     name: Build PWA + Deploy → Vercel
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main' && hashFiles('thepg/pubspec.yaml') != ''
+    if: github.ref == 'refs/heads/main'
     environment: production
 
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Checkout Flutter frontend source (CIRCA-RL-GHANA/Flutter-Ready)
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/Flutter-Ready
+          token: ${{ secrets.GH_PAT }}
+          path: thepg
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
