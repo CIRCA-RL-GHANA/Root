@@ -1,6 +1,3 @@
-[submodule "orionstack-backend--main"]
-	path = orionstack-backend--main
-	url = https://github.com/CIRCA-RL-GHANA/NestJs-Ready.git
 [submodule "thepg"]
 	path = thepg
 	url = https://github.com/CIRCA-RL-GHANA/Flutter-Ready.git
