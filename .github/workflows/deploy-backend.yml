@@ -25,6 +25,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -51,6 +53,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       # ── Copy code to VPS via rsync ──────────────────────────────────────────
       - name: Configure SSH key
@@ -64,10 +68,13 @@ jobs:
         run: |
           rsync -avz --delete \
             --exclude='.git*' \
+            --exclude='.env' \
             --exclude='node_modules' \
             --exclude='thepg' \
             --exclude='**/dist' \
             --exclude='**/.dart_tool' \
+            --exclude='certbot/' \
+            --exclude='orionstack-backend--main/uploads/' \
             -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT || 22 }} -o StrictHostKeyChecking=yes" \
             ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST || '72.61.17.215' }}:/opt/promptgenie/
 
