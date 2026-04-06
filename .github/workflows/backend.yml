@@ -205,6 +205,7 @@ jobs:
     environment: production
     permissions:
       contents: read
+      packages: read   # needed so GITHUB_TOKEN can pull from GHCR on the VPS
 
     steps:
       - uses: actions/checkout@v4
