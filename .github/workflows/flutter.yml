@@ -133,10 +133,10 @@ jobs:
           EOF
 
       - name: Build App Bundle (AAB)
-        run: flutter build appbundle --release --obfuscate --split-debug-info=build/debug-info
+        run: flutter build appbundle --release --obfuscate --split-debug-info=build/debug-info --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.genieinprompt.app' }} --dart-define=ENVIRONMENT=production
 
       - name: Build APK
-        run: flutter build apk --release --obfuscate --split-debug-info=build/debug-info
+        run: flutter build apk --release --obfuscate --split-debug-info=build/debug-info --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.genieinprompt.app' }} --dart-define=ENVIRONMENT=production
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
@@ -205,7 +205,7 @@ jobs:
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
       - name: Build iOS
-        run: flutter build ipa --release --obfuscate --split-debug-info=build/debug-info --export-options-plist=ios/ExportOptions.plist
+        run: flutter build ipa --release --obfuscate --split-debug-info=build/debug-info --export-options-plist=ios/ExportOptions.plist --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.genieinprompt.app' }} --dart-define=ENVIRONMENT=production
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
@@ -256,7 +256,7 @@ jobs:
             --release \
             --web-renderer canvaskit \
             --pwa-strategy offline-first \
-            --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.promptgenie.app' }} \
+            --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.genieinprompt.app' }} \
             --dart-define=ENVIRONMENT=production \
             --source-maps
 
@@ -283,7 +283,7 @@ jobs:
       - name: Smoke-test Vercel deployment
         run: |
           sleep 10
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' '${{ vars.VERCEL_URL || "https://promptgenie.app" }}')
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' '${{ vars.VERCEL_URL || "https://genieinprompt.app" }}')
           echo "PWA HTTP status: $STATUS"
           [ "$STATUS" -eq 200 ] || { echo "::error::Smoke test failed (HTTP $STATUS)"; exit 1; }
 

@@ -228,15 +228,22 @@ jobs:
 
       - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
         with:
           host: ${{ secrets.DEPLOY_HOST || '72.61.17.215' }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           command_timeout: 15m
+          envs: GHCR_TOKEN,GHCR_USER
           script: |
             set -euo pipefail
             cd /docker/root
+
+            echo "=== [0/4] Authenticating to GHCR ==="
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
             # ── Auto-generate required secrets if not set in .env ──────────
             _fill_secret() {
