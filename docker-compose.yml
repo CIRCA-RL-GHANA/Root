@@ -1,28 +1,5 @@
-# ============================================================
-# docker-compose.yml — Hostinger Docker Manager (paste-only)
-#
-# This file is fully self-contained — no repo clone required.
-# Paste the entire contents into Hostinger → Docker Manager
-# → "Use Compose manually" text area, then set the required
-# environment variables in Hostinger's UI (or a .env file on
-# the VPS) before hitting Deploy.
-#
-# The backend image is pre-built by CI and stored in GHCR.
-# No local build step is required.
-#
-# Required env vars to set in Hostinger before deploying:
-#   DB_PASSWORD         – PostgreSQL password
-#   REDIS_PASSWORD      – Redis password
-#   JWT_SECRET          – run: openssl rand -base64 64
-#   JWT_REFRESH_SECRET  – run: openssl rand -base64 64
-#
-# Optional env vars (have sensible defaults):
-#   SERVER_IP           – VPS public IP for the HTTP fallback vhost (default: 72.61.17.215)
-# ============================================================
 version: '3.8'
 
-# ── Inline nginx configuration ─────────────────────────────
-# These configs are embedded here so no local files are needed.
 configs:
   nginx_main:
     content: |
@@ -61,36 +38,12 @@ configs:
           gzip_http_version 1.1;
           gzip_min_length 256;
           gzip_types
-              application/atom+xml
-              application/geo+json
-              application/javascript
               application/json
-              application/ld+json
-              application/manifest+json
-              application/rdf+xml
-              application/rss+xml
-              application/vnd.ms-fontobject
-              application/wasm
-              application/x-javascript
-              application/x-web-app-manifest+json
-              application/xhtml+xml
+              application/javascript
               application/xml
-              font/eot
-              font/opentype
-              font/otf
-              image/bmp
-              image/svg+xml
-              text/cache-manifest
-              text/calendar
               text/css
               text/javascript
-              text/markdown
               text/plain
-              text/vcard
-              text/vnd.rim.location.xloc
-              text/vtt
-              text/x-component
-              text/x-cross-domain-policy
               text/xml;
 
           limit_req_zone $$binary_remote_addr zone=api:10m rate=30r/s;
@@ -174,7 +127,6 @@ configs:
       }
 
 services:
-  # ── Nginx reverse proxy ────────────────────────────────────
   nginx:
     image: nginx:1.25-alpine
     container_name: promptgenie-nginx
@@ -200,7 +152,6 @@ services:
       timeout: 5s
       retries: 3
 
-  # ── Certbot (SSL auto-renewal) ─────────────────────────────
   certbot:
     image: certbot/certbot:latest
     container_name: promptgenie-certbot
@@ -211,7 +162,6 @@ services:
     networks:
       - promptgenie-network
 
-  # ── PostgreSQL ─────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
     container_name: promptgenie-postgres
@@ -232,12 +182,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 1G
 
-  # ── Redis ──────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: promptgenie-redis
@@ -259,12 +204,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 512M
 
-  # ── NestJS Backend (pre-built image from GHCR) ─────────────
   app:
     image: ghcr.io/circa-rl-ghana/root/promptgenie-backend:latest
     container_name: promptgenie-app
@@ -311,16 +251,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1.0'
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 5
-        window: 120s
 
 volumes:
   postgres_data:
