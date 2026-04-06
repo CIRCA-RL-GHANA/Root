@@ -48,7 +48,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/root/promptgenie-backend
 
@@ -101,7 +101,12 @@ jobs:
 
       - name: Install dependencies
         working-directory: orionstack-backend--main
-        run: npm ci
+        # NestJS-Ready's package-lock.json may lag behind package.json (transitive
+        # socket.io / throttler deps were added without regenerating the lock).
+        # Use 'npm install' so the runner regenerates the lock on the fly instead
+        # of failing with EUSAGE.  When the NestJS-Ready lockfile is committed
+        # up-to-date, this can be changed back to 'npm ci'.
+        run: npm install
 
       - name: Lint
         working-directory: orionstack-backend--main
