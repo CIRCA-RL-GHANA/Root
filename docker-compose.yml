@@ -137,6 +137,7 @@ services:
       TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
       AI_ENABLED: ${AI_ENABLED:-false}
       AI_API_KEY: ${AI_API_KEY:-}
+      PIN_ENCRYPTION_KEY: ${PIN_ENCRYPTION_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -145,6 +146,7 @@ services:
     volumes:
       - app_logs:/app/logs
       - app_uploads:/app/uploads
+      - app_ml_models:/app/ml-models
     networks:
       - promptgenie-network
     healthcheck:
@@ -172,6 +174,8 @@ volumes:
   app_logs:
     driver: local
   app_uploads:
+    driver: local
+  app_ml_models:
     driver: local
 
 networks:
