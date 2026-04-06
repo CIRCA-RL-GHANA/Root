@@ -10,14 +10,13 @@ on:
   push:
     branches: [main]
     paths:
-      - 'orionstack-backend--main/**'
       - 'docker-compose.yml'
       - 'nginx/**'
       - '.github/workflows/backend.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'orionstack-backend--main/**'
+      - '.github/workflows/backend.yml'
   workflow_dispatch:
     inputs:
       skip_migrations:
@@ -72,6 +71,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: false
+
+      - name: Checkout NestJS backend source (CIRCA-RL-GHANA/NestJS-Ready)
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/NestJS-Ready
+          path: orionstack-backend--main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
