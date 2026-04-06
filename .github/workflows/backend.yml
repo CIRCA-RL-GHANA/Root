@@ -224,7 +224,7 @@ jobs:
             docker compose -f docker-compose.yml up -d postgres redis
 
             echo "=== [3/4] Running migrations ==="
-            if [ "${{ github.event.inputs.skip_migrations }}" != "true" ]; then
+            if [ "${{ github.event.inputs.skip_migrations || 'false' }}" != "true" ]; then
               docker compose -f docker-compose.yml run --rm \
                 -e NODE_ENV=production \
                 --entrypoint "" \
