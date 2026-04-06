@@ -1,6 +1,22 @@
 # ============================================
 # Flutter CI/CD Pipeline
 # Test → Build Android/iOS/Web
+#
+# Triggers
+# ────────
+# • Push/PR to main touching this workflow file
+# • repository_dispatch event "flutter-deploy"
+#   → sent by CIRCA-RL-GHANA/Flutter-Ready after its tests pass:
+#
+#     - name: Trigger Root deployment
+#       uses: peter-evans/repository-dispatch@v3
+#       with:
+#         token: ${{ secrets.ROOT_DISPATCH_TOKEN }}   # PAT (repo scope)
+#         repository: CIRCA-RL-GHANA/Root
+#         event-type: flutter-deploy
+#
+#   Store ROOT_DISPATCH_TOKEN as a secret in Flutter-Ready.
+# • workflow_dispatch — manual trigger from Actions UI
 # ============================================
 name: Flutter CI/CD
 
@@ -8,12 +24,14 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'thepg/**'
       - '.github/workflows/flutter.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'thepg/**'
+      - '.github/workflows/flutter.yml'
+  repository_dispatch:
+    types: [flutter-deploy]
+  workflow_dispatch:
 
 defaults:
   run:
@@ -32,12 +50,17 @@ jobs:
   test:
     name: Analyze & Test
     runs-on: ubuntu-latest
-    if: hashFiles('thepg/pubspec.yaml') != ''
 
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Checkout Flutter frontend source (CIRCA-RL-GHANA/Flutter-Ready)
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/Flutter-Ready
+          path: thepg
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -68,12 +91,18 @@ jobs:
     name: Build Android
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main' && hashFiles('thepg/pubspec.yaml') != ''
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Checkout Flutter frontend source (CIRCA-RL-GHANA/Flutter-Ready)
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/Flutter-Ready
+          path: thepg
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -104,10 +133,10 @@ jobs:
           EOF
 
       - name: Build App Bundle (AAB)
-        run: flutter build appbundle --release --obfuscate --split-debug-info=build/debug-info
+        run: flutter build appbundle --release --obfuscate --split-debug-info=build/debug-info --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.genieinprompt.app' }} --dart-define=ENVIRONMENT=production
 
       - name: Build APK
-        run: flutter build apk --release --obfuscate --split-debug-info=build/debug-info
+        run: flutter build apk --release --obfuscate --split-debug-info=build/debug-info --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.genieinprompt.app' }} --dart-define=ENVIRONMENT=production
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
@@ -135,12 +164,18 @@ jobs:
     name: Build iOS
     runs-on: macos-latest
     needs: test
-    if: github.ref == 'refs/heads/main' && hashFiles('thepg/pubspec.yaml') != ''
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Checkout Flutter frontend source (CIRCA-RL-GHANA/Flutter-Ready)
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/Flutter-Ready
+          path: thepg
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -170,7 +205,7 @@ jobs:
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
       - name: Build iOS
-        run: flutter build ipa --release --obfuscate --split-debug-info=build/debug-info --export-options-plist=ios/ExportOptions.plist
+        run: flutter build ipa --release --obfuscate --split-debug-info=build/debug-info --export-options-plist=ios/ExportOptions.plist --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.genieinprompt.app' }} --dart-define=ENVIRONMENT=production
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
@@ -191,13 +226,19 @@ jobs:
     name: Build PWA + Deploy → Vercel
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main' && hashFiles('thepg/pubspec.yaml') != ''
+    if: github.ref == 'refs/heads/main'
     environment: production
 
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Checkout Flutter frontend source (CIRCA-RL-GHANA/Flutter-Ready)
+        uses: actions/checkout@v4
+        with:
+          repository: CIRCA-RL-GHANA/Flutter-Ready
+          path: thepg
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -215,7 +256,7 @@ jobs:
             --release \
             --web-renderer canvaskit \
             --pwa-strategy offline-first \
-            --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.promptgenie.app' }} \
+            --dart-define=API_BASE_URL=${{ vars.API_BASE_URL || 'https://api.genieinprompt.app' }} \
             --dart-define=ENVIRONMENT=production \
             --source-maps
 
@@ -242,7 +283,7 @@ jobs:
       - name: Smoke-test Vercel deployment
         run: |
           sleep 10
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' '${{ vars.VERCEL_URL || "https://promptgenie.app" }}')
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' '${{ vars.VERCEL_URL || "https://genieinprompt.app" }}')
           echo "PWA HTTP status: $STATUS"
           [ "$STATUS" -eq 200 ] || { echo "::error::Smoke test failed (HTTP $STATUS)"; exit 1; }
 
