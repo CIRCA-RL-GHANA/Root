@@ -46,8 +46,8 @@ services:
     container_name: promptgenie-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_NAME:-promptgenie_prod}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_INITDB_ARGS: '--auth-host=scram-sha-256'
     ports:
@@ -57,7 +57,7 @@ services:
     networks:
       - promptgenie-network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-promptgenie}']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-promptgenie_prod}']
       interval: 10s
       timeout: 5s
       retries: 5
