@@ -136,3 +136,118 @@ export interface AssignStaffRoleRequest {
   posId?: string;
   branchId?: string;
 }
+
+// ─── e-Play ─────────────────────────────────────────
+
+export type DigitalAssetType = 'music' | 'movie' | 'podcast' | 'ebook' | 'show';
+export type DigitalAssetStatus = 'draft' | 'published' | 'unlisted' | 'removed';
+export type AccessModel = 'perpetual' | 'rental' | 'subscription';
+export type LicenseStatus = 'active' | 'expired' | 'revoked';
+export type CreatorTier = 'indie' | 'verified' | 'label';
+
+export interface DigitalAsset {
+  id: string;
+  title: string;
+  description: string | null;
+  type: DigitalAssetType;
+  status: DigitalAssetStatus;
+  accessModel: AccessModel;
+  creatorProfileId: string;
+  priceQPoints: number;
+  rentalDurationDays: number | null;
+  coverUrl: string | null;
+  encryptedStorageRef: string;
+  durationSeconds: number | null;
+  fileSizeBytes: number | null;
+  tags: string | null;
+  allowedRegions: string[] | null;
+  platformRoyaltyPct: number;
+  purchaseCount: number;
+  playCount: number;
+  createdAt: string;
+}
+
+export interface CreatorProfile {
+  id: string;
+  userId: string;
+  displayName: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
+  tier: CreatorTier;
+  creatorRoyaltyPct: number;
+  totalEarningsQPoints: number;
+  assetCount: number;
+  followerCount: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface EplayLicense {
+  id: string;
+  userId: string;
+  digitalAssetId: string;
+  status: LicenseStatus;
+  expiresAt: string | null;
+  amountPaidQPoints: number;
+  isPinned: boolean;
+  lastAccessedAt: string | null;
+  createdAt: string;
+}
+
+export interface StreamTokenResponse {
+  streamToken: string;
+  expiresAt: string;
+}
+
+// ─── Community ──────────────────────────────────────
+
+export type CommunityType = 'library' | 'playlist' | 'theater' | 'fair' | 'hub' | 'hangout' | 'journal';
+export type CommunityStatus = 'active' | 'archived' | 'suspended';
+export type CommunityVisibility = 'public' | 'invite_only' | 'private';
+export type MemberRole = 'owner' | 'admin' | 'moderator' | 'member';
+export type MemberStatus = 'active' | 'banned' | 'pending';
+export type PostType = 'text' | 'link' | 'poll' | 'event' | 'listing';
+
+export interface Community {
+  id: string;
+  name: string;
+  description: string | null;
+  type: CommunityType;
+  status: CommunityStatus;
+  visibility: CommunityVisibility;
+  ownerId: string;
+  coverUrl: string | null;
+  memberCount: number;
+  postCount: number;
+  metadata: Record<string, unknown> | null;
+  tags: string | null;
+  createdAt: string;
+}
+
+export interface CommunityMembership {
+  id: string;
+  communityId: string;
+  userId: string;
+  role: MemberRole;
+  status: MemberStatus;
+  banReason: string | null;
+  inviteToken: string | null;
+  createdAt: string;
+}
+
+export interface CommunityPost {
+  id: string;
+  communityId: string;
+  authorId: string;
+  type: PostType;
+  title: string | null;
+  body: string | null;
+  linkedContentId: string | null;
+  metadata: Record<string, unknown> | null;
+  likeCount: number;
+  commentCount: number;
+  isPinned: boolean;
+  isRemoved: boolean;
+  createdAt: string;
+}
