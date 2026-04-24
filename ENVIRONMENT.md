@@ -177,7 +177,7 @@ THROTTLE_LIMIT=100
 | `CORS_CREDENTIALS` | ❌ | Allow credentials (`true` / `false`, default `true`) |
 
 ```env
-CORS_ORIGIN=https://promptgenie.app
+CORS_ORIGIN=https://genieinprompt.app
 CORS_CREDENTIALS=true
 ```
 
@@ -284,7 +284,7 @@ PAYMENT_FACILITATOR_SECRET_KEY=CHANGE_ME
 PAYMENT_FACILITATOR_PUBLIC_KEY=CHANGE_ME
 PAYMENT_FACILITATOR_WEBHOOK_SECRET=CHANGE_ME
 PAYMENT_FACILITATOR_CURRENCY=GHS
-PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.genieinprompt.app/api/v1/payments/webhook
 ```
 
 ---
@@ -380,7 +380,7 @@ THROTTLE_TTL=60
 THROTTLE_LIMIT=100
 
 # ── CORS ─────────────────────────────────────────────────────
-CORS_ORIGIN=https://promptgenie.app
+CORS_ORIGIN=https://genieinprompt.app
 CORS_CREDENTIALS=true
 
 # ── Logging ──────────────────────────────────────────────────
@@ -417,7 +417,7 @@ PAYMENT_FACILITATOR_SECRET_KEY=CHANGE_ME
 PAYMENT_FACILITATOR_PUBLIC_KEY=CHANGE_ME
 PAYMENT_FACILITATOR_WEBHOOK_SECRET=CHANGE_ME
 PAYMENT_FACILITATOR_CURRENCY=GHS
-PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.promptgenie.app/api/v1/payments/webhook
+PAYMENT_FACILITATOR_WEBHOOK_URL=https://api.genieinprompt.app/api/v1/payments/webhook
 
 # ── Q Points AI Market Maker ──────────────────────────────────
 AI_MARKET_ENABLED=false

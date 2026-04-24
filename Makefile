@@ -59,7 +59,7 @@ preflight: ## Run pre-deployment checks
 	chmod +x scripts/*.sh
 	./scripts/deploy.sh preflight
 
-ssl: ## Setup SSL certificate (usage: make ssl DOMAIN=api.promptgenie.app EMAIL=admin@promptgenie.app)
+ssl: ## Setup SSL certificate (usage: make ssl DOMAIN=api.genieinprompt.app EMAIL=admin@genieinprompt.app)
 	chmod +x scripts/*.sh
 	./scripts/setup-ssl.sh $(DOMAIN) $(EMAIL)
 

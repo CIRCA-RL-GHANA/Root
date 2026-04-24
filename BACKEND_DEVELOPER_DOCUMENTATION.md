@@ -555,7 +555,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 ```dart
 // Flutter (socket_io_client)
-final socket = io('wss://api.promptgenie.app/chat', OptionBuilder()
+final socket = io('wss://api.genieinprompt.app/chat', OptionBuilder()
   .setTransports(['websocket'])
   .setAuth({'token': 'Bearer $accessToken'})
   .build());

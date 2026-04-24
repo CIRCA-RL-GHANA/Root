@@ -1,6 +1,6 @@
 # API Reference
 
-**Base URL:** `https://api.promptgenie.app/api/v1`  
+**Base URL:** `https://api.genieinprompt.app/api/v1`  
 **Authentication:** Bearer JWT — `Authorization: Bearer <access_token>`  
 **Content-Type:** `application/json`  
 **Interactive docs (dev only):** `http://localhost:3000/api/docs`
@@ -1165,14 +1165,14 @@ Readiness probe — is the app ready to serve traffic?
 
 ### Connection
 
-**URL:** `wss://api.promptgenie.app/socket.io/chat`  
+**URL:** `wss://api.genieinprompt.app/socket.io/chat`  
 **Namespace:** `/chat`  
 **Transport:** WebSocket (with polling fallback)
 
 **Authentication:** Pass JWT in the connection handshake:
 
 ```javascript
-const socket = io('wss://api.promptgenie.app/chat', {
+const socket = io('wss://api.genieinprompt.app/chat', {
   auth: { token: 'Bearer eyJ...' }
 });
 ```
