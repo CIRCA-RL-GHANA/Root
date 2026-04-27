@@ -251,3 +251,52 @@ export interface CommunityPost {
   isRemoved: boolean;
   createdAt: string;
 }
+
+// ─── Q Points Terms of Service ──────────────────────
+
+/** GET /qpoints/tos — current ToS document */
+export interface QPointsTosContent {
+  version: string;
+  effectiveDate: string;
+  contentHash: string; // SHA-256 hex of the full text
+  text: string;
+}
+
+/** GET /qpoints/tos/status */
+export interface QPointsTosStatus {
+  accepted: boolean;
+  version: string;
+  effectiveDate: string;
+}
+
+/** POST /qpoints/tos/accept — request body */
+export interface AcceptQPointsTosRequest {
+  tosVersion: string;
+  readConfirmed: boolean;  // User read the full ToS
+  riskConfirmed: boolean;  // User acknowledged Section 9 risk disclosures
+  ageConfirmed: boolean;   // User confirmed 18+ years (Section 3.1)
+  platform: 'web' | 'ios' | 'android';
+}
+
+/** POST /qpoints/tos/accept — response */
+export interface AcceptQPointsTosResponse {
+  success: boolean;
+  tosVersion: string;
+  acceptedAt: string;
+  platform: string;
+}
+
+/** Audit record (admin view) */
+export interface QPointsTosAcceptanceRecord {
+  id: string;
+  userId: string;
+  tosVersion: string;
+  ipAddress: string;
+  userAgent: string;
+  platform: string;
+  readConfirmed: boolean;
+  riskConfirmed: boolean;
+  ageConfirmed: boolean;
+  tosContentHash: string;
+  acceptedAt: string;
+}
